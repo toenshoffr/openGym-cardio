@@ -48,6 +48,12 @@ export function integrationRoutes({ json, readBody, readSession, hub, audit = ()
       json(res, 200, await hub.test(user.id, idOf(body), typeof body.type === 'string' ? body.type : null));
     }),
 
+    // A pull provider's read (Garmin): { id, op: 'list' | 'file', ...params }. The provider's answer as is.
+    'POST /api/integrations/pull': guard(async (req, res, user) => {
+      const body = await readBody(req);
+      json(res, 200, await hub.pull(user.id, idOf(body), typeof body.op === 'string' ? body.op.slice(0, 20) : '', body));
+    }),
+
     'POST /api/integrations/retry': guard(async (req, res, user) => {
       const body = await readBody(req);
       json(res, 200, await hub.retry(user.id, idOf(body)));

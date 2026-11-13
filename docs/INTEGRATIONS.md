@@ -8,6 +8,7 @@ you switch it on.
 |---|---|---|
 | **Apple Health** | iPhone app | Finished workouts and weigh-ins go to Apple Health; heart rate from your watch and weigh-ins from your scale come back. |
 | **Health Connect** | Android app | The same, with Health Connect. |
+| **Garmin Connect** | needs your own server | Pulls your runs and rides from Garmin with your own Garmin API key, as the Cardio screen's activities ([details](CARDIO.md#garmin-connect-sync)). Off until the server has `INTEGRATIONS=garmin`. |
 | **Hevy** | everywhere | A one-off import of your Hevy history with a Hevy Pro API key. |
 | **Import a file** | everywhere | Strong, FitNotes, Hevy CSV, GymMane or an Apple Health export, once ([details](DATA_IMPORTS.md)). |
 | **Spreadsheet (CSV)** | everywhere | Every set, weigh-in and measurement as a CSV openGym can read back. |

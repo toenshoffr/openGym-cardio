@@ -56,10 +56,39 @@ the message tells how many were added, were already there or could not be read.
   route, the session against its plan, the longest so far, the week against your usual week.
 - **This week** and the last eight weeks on the list.
 
+## Garmin Connect sync
+
+Optional, and only on a server of your own. Garmin has a **Personal API** for exactly this: you
+create a key for your own Garmin account, no business application needed. It is for your own data
+only (Garmin's terms: not for apps serving other people), and pull only.
+
+1. The admin adds `garmin` to `INTEGRATIONS` in the server's `.env` (`INTEGRATIONS=webhook,garmin`)
+   and restarts it. Nothing else is configured: there is no Garmin app registration.
+2. Garmin Connect on the web → account settings → **Personal API Key** → Create Key, accept the terms,
+   pick how long it lasts (30, 90, 180 days or a year) and copy it. Garmin shows it once.
+3. openGym → Settings → Integrations → **Garmin Connect** → Connect, paste the key. It is tried at once.
+4. **Sync from Garmin** there, or on the Cardio screen. It lists your newest runs and rides, leaves
+   out the ones already here (same sport, same start within a minute), downloads the original
+   file of each new one and imports it exactly like a file you picked: planned sessions are filled,
+   laps and kilometres come from the file. Up to 25 files a time; a first sync past that says how
+   many are left, tap again. Swims, strength and the rest stay on Garmin.
+
+The key is kept sealed on your server (like a webhook secret) and traded for a 24 hour access token
+whenever needed; the token lives in memory only. When the key expires, Garmin refuses it and the card
+says **Needs attention**: make a new key and add it again (Disconnect, then Connect). Garmin emails
+you about a week before. Syncing is on demand, there is no background polling.
+
+**Verify before relying on it.** The calls are the ones in Garmin's Personal API documentation (the
+key-for-token call, the activity search and the original-file download, which is a zip). Garmin's pages
+do not say what the token reply looks like or how it is sent, so the server accepts a JSON reply with
+`access_token`, `accessToken` or `token`, or a bare token, and sends it as `Authorization: Bearer`.
+This was written without a Garmin key to try it against, so the first Test on a real key is the real
+check; if it says Garmin "answered, but not with a token openGym can read", the shape is the thing to fix
+(`tokenOf` and `get` in `api/integrations/providers/garmin.js`).
+
 ## What it does not do
 
-- **No live sync with Strava or Garmin.** Both would need an application registered with them and a
-  link to your account; openGym has no third-party account on purpose. Import a file instead.
+- **No Strava link.** Import its files instead. Garmin sync is the only live source.
 - **No place names.** Looking up "which street is that" means sending coordinates to a service, so
   the screen shows the coordinates and the route shape.
 - **Metric only.** Kilometres, whatever the weight unit says.
@@ -90,7 +119,10 @@ All of it is pure code in `frontend/src/lib/`, each file with a test beside it:
 | `cardio-insights.js` | `insightsOf(session, state)`: the observations, as ids and numbers |
 | `cardio.js` | Planning, matching an import to a plan, duplicates, formatting, week totals |
 | `cardio-import.js` | A batch of picked files to sessions, one result per file |
+| `garmin-sync.js` | Garmin sync: list, skip what is here, download, hand each file to `cardio-import.js` |
 | `cardio-fixtures.js` | Test helper: synthetic activities with an exactly known pace |
+
+Server side, `api/integrations/providers/garmin.js` (a pull provider: the key, the token, the list, the file) and `api/integrations/zip.js` (Garmin's download is a deflated zip), reached through `POST /api/integrations/pull`.
 
 `views/Cardio.jsx` holds the screens. A new insight is an id in `cardio-insights.js` and its sentence in
 `insightText`. `cardio` is in `PER_KEY` of both `lib/sync-merge.js` and `api/sync-stamps.js`.

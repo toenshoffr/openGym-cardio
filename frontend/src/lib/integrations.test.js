@@ -32,6 +32,26 @@ describe('the directory', () => {
     expect(cardState('coach', ios)).toEqual({ status: 'off', action: 'connect' })
   })
 
+  it('garmin: needs a server, hidden unless offered, then connect, manage and attention', () => {
+    const user = { user: { id: 'u' }, demo: false, offered: [], server: null }
+    expect(cardState('garmin', { demo: true })).toEqual({ status: 'server', action: null })
+    expect(cardState('garmin', { user: null })).toEqual({ status: 'server', action: null })
+    expect(cardState('garmin', user)).toBeNull()
+    expect(cardState('garmin', { ...user, admin: true })).toEqual({ status: 'off', action: 'open' })
+    const on = { ...user, offered: ['garmin'], server: { connections: [] } }
+    expect(cardState('garmin', on)).toEqual({ status: 'off', action: 'connect' })
+    const conn = (status, paused) => ({ ...on, server: { connections: [{ provider: 'garmin', status, paused }] } })
+    expect(cardState('garmin', conn('connected', false))).toEqual({ status: 'connected', action: 'manage' })
+    expect(cardState('garmin', conn('attention', false))).toEqual({ status: 'attention', action: 'manage' })
+    expect(cardState('garmin', conn('paused', true))).toEqual({ status: 'off', action: 'manage' })
+  })
+
+  it('garmin is a training card that goes with the Cardio module', () => {
+    const ctx = { user: { id: 'u' }, offered: ['garmin'], server: { connections: [] }, mod: id => id !== 'cardio' }
+    expect(directory(ctx).flatMap(c => c.cards).map(c => c.id)).not.toContain('garmin')
+    expect(directory({ ...ctx, mod: () => true }).flatMap(c => c.cards).map(c => c.id)).toContain('garmin')
+  })
+
   it('webhooks: hidden where the server does not offer them, except to its admin', () => {
     const user = { ...web, user: { id: 'u1' } }
     expect(cardState('webhook', user)).toBeNull()

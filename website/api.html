@@ -247,7 +247,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <p class="api-facts">
     <span>OpenAPI 3.1.0</span>
     <span>openGym v1.4.3</span>
-    <span>92 endpoints</span>
+    <span>93 endpoints</span>
     <span>AGPL-3.0-or-later</span>
   </p>
 
@@ -3040,10 +3040,10 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="m post">POST</span>
     <span class="ep-path"><code>/api/integrations/connect</code></span>
     <span class="ep-chev" aria-hidden="true"></span>
-    <span class="ep-sum">Add a connection (a webhook)</span>
+    <span class="ep-sum">Add a connection (a webhook, or a Garmin key)</span>
   </summary>
   <div class="ep-body">
-<p>For <code>provider: webhook</code>: <code>url</code> (https, or http to a home-network address when <code>INTEGRATIONS_ALLOW_LAN=1</code>; never loopback, link-local or, by default, a private address), an optional <code>label</code> (60 characters) and <code>events</code> (at least one; default <code>workout.finished</code>). At most 10 webhooks a profile. The answer's <code>reveal.secret</code> is the signing secret, <b>shown this once</b>: the server keeps it sealed and never sends it again. Payloads and the signature: docs/INTEGRATIONS.md.</p>
+<p>For <code>provider: webhook</code>: <code>url</code> (https, or http to a home-network address when <code>INTEGRATIONS_ALLOW_LAN=1</code>; never loopback, link-local or, by default, a private address), an optional <code>label</code> (60 characters) and <code>events</code> (at least one; default <code>workout.finished</code>). For <code>provider: garmin</code>: <code>apiKey</code>, a Personal API key from Garmin Connect Web (at most one a profile; no <code>reveal</code>). At most 10 webhooks a profile. The answer's <code>reveal.secret</code> is the signing secret, <b>shown this once</b>: the server keeps it sealed and never sends it again. Payloads and the signature: docs/INTEGRATIONS.md.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
 
 <p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
@@ -3053,7 +3053,12 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="p-desc"></span>
   </div>
   <div class="prow">
-    <span class="p-name">url<em class="p-req" title="required">required</em></span>
+    <span class="p-name">apiKey</span>
+    <span class="p-type">string <span class="p-hint">(&le; 512 chars)</span></span>
+    <span class="p-desc">garmin: the Personal API key</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">url</span>
     <span class="p-type">string <span class="p-hint">(&le; 2048 chars)</span></span>
     <span class="p-desc"></span>
   </div>
@@ -3229,6 +3234,82 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow rrow">
     <span class="r-code s4">429</span>
     <span class="p-desc">Connect, change or test tapped too often (20 a minute, tests 6). Try again after <code>Retry-After</code>.<span class="r-sig"><code>{&quot;error&quot;:&quot;slow down a little&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-pullIntegration">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/integrations/pull</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Read from a connection that is pulled from (Garmin Connect)</span>
+  </summary>
+  <div class="ep-body">
+<p>For <code>provider: garmin</code>, the Personal API of Garmin Connect (the person's own API key, sealed on the server). <code>op: list</code> answers the newest runs and rides (<code>start</code>, <code>limit</code> up to 100); <code>op: file</code> answers the original file of one activity (<code>activity</code>, an id from the list) as base64. Garmin documents the calls; see docs/CARDIO.md for what is not verified. 120 a minute per profile.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">id<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The connection's id.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">op<em class="p-req" title="required">required</em></span>
+    <span class="p-type">&quot;list&quot; | &quot;file&quot;</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">start</span>
+    <span class="p-type">integer <span class="p-hint">(0&ndash;)</span></span>
+    <span class="p-desc">list: offset</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">limit</span>
+    <span class="p-type">integer <span class="p-hint">(1&ndash;100)</span></span>
+    <span class="p-desc">list: page size, default 50</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">activity</span>
+    <span class="p-type">string</span>
+    <span class="p-desc">file: the activity id</span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">The list or the file.<span class="r-sig">{ items: object[], more: boolean, next: integer, name: string, data: string }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc">Not a pull connection, or a bad id or op (<code>code</code>: <code>kind</code>, <code>activity</code>, <code>op</code>).</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">Not signed in, or Garmin refused the key (<code>code</code>: <code>key</code>).</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc"><code>code</code> <code>off</code>: the server runs without <code>INTEGRATIONS</code> (the default). <code>code</code> <code>missing</code>: no such connection on this profile (another profile's id is the same answer).<span class="r-sig"><code>{&quot;error&quot;:&quot;integrations are off on this server&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">409</span>
+    <span class="p-desc">The connection is paused or its settings cannot be read (<code>code</code>: <code>paused</code>, <code>sealed</code>).</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">429</span>
+    <span class="p-desc">Connect, change or test tapped too often (20 a minute, tests 6). Try again after <code>Retry-After</code>.<span class="r-sig"><code>{&quot;error&quot;:&quot;slow down a little&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s5">502</span>
+    <span class="p-desc">Garmin could not be reached or sent something unreadable (<code>code</code>: <code>dns</code>, <code>network</code>, <code>garmin</code>, <code>token</code>, <code>file</code>, <code>big</code>).</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s5">504</span>
+    <span class="p-desc">Garmin did not answer in time (<code>code</code>: <code>timeout</code>).</span>
   </div>
     </div>
   </div>

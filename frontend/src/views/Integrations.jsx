@@ -18,6 +18,7 @@ import Icon from '../components/Icon.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 import { Section, Row, Switch, Button, TextField } from '../components/ui.jsx'
 import { isOn } from '../lib/modules.js'
+import { syncGarmin, garminMessage } from '../lib/garmin-sync.js'
 
 /* Settings → Integrations (v1.4.4): one directory of what openGym can talk to, grouped, each card
    with what it is, whether it is on, and the one thing to do next. The cards are thin on purpose:
@@ -141,6 +142,10 @@ export default function IntegrationsPage({ android = false, ios = false }) {
         if (action === 'open') return infoSheet(card, t('Webhooks are off on this server. Add INTEGRATIONS=webhook to its .env and restart it.'), INTEGRATIONS_DOCS)
         if (action === 'connect') return addWebhookSheet(webhookCtx)
         return webhookListSheet(webhookCtx)
+      case 'garmin':
+        if (status === 'server') return infoSheet(card, t('Garmin sync is done by your own openGym server, so it needs one. Connect this device to it in Account.'))
+        if (action === 'open') return infoSheet(card, t('Garmin is off on this server. Add garmin to INTEGRATIONS in its .env (for example INTEGRATIONS=webhook,garmin) and restart it.'), INTEGRATIONS_DOCS)
+        return garminSheet(card, webhookCtx)
       case 'coach': return nav(MOBILE ? '/coach/setup' : '/coach')
       case 'mcp':
         if (status === 'server') return infoSheet(card, t('The MCP server runs next to your own openGym server and reads your data there.'), MCP_DOCS)
@@ -151,6 +156,8 @@ export default function IntegrationsPage({ android = false, ios = false }) {
   const open = card => {
     // The health stores and the webhooks have more to say than a card holds.
     if (card.state.status === 'device' || card.state.status === 'server' || card.state.action === 'open' && card.id === 'webhook') return act(card)
+    if (card.id === 'garmin' && card.state.action === 'connect') return detailSheet(card, { act: () => act(card) })
+    if (card.id === 'garmin') return act(card)
     if (card.id === 'webhook') return card.state.action === 'connect' ? detailSheet(card, { act: () => act(card) }) : webhookListSheet(webhookCtx)
     if (card.id === 'apple-health' || card.id === 'health-connect') {
       return detailSheet(card, { act: () => act(card), health, onDisconnect: healthOn(health) ? () => disconnectHealth(card, toast) : null, retry: () => nav('/settings/' + card.id) })
@@ -269,6 +276,91 @@ function detailSheet(card, { act, health, onDisconnect, retry }) {
       {onDisconnect && <DangerRow label={t('Disconnect')} onClick={go(onDisconnect)} />}
     </>
   })
+}
+
+/* ---------------- Garmin Connect ---------------- */
+
+export const GARMIN_KEY_PAGE = 'https://connect.garmin.com/app/settings/personalApiToken'
+
+function garminSheet(card, ctx) {
+  const conn = (ctx.server.data?.connections || []).find(c => c.provider === 'garmin')
+  sheet(close => (conn ? <GarminManage close={close} conn={conn} card={card} {...ctx} /> : <GarminConnect close={close} card={card} {...ctx} />))
+}
+
+function GarminConnect({ close, card, server, toast }) {
+  const [key, setKey] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState(null)
+  const add = async () => {
+    setBusy(true); setProblem(null)
+    try {
+      const r = await api('/api/integrations/connect', { method: 'POST', body: JSON.stringify({ provider: 'garmin', apiKey: key.trim() }) })
+      // Garmin has the last word on a key: try it now, so a wrong one says so here and not tomorrow.
+      const test = await api('/api/integrations/test', { method: 'POST', body: JSON.stringify({ id: r.connection.id }) })
+      server.load()
+      if (test?.ok) { toast?.(t('Garmin connected')); close() } else setProblem(test?.msg || t('Something went wrong'))
+    } catch (e) { setProblem(errText(e, t('Something went wrong'))) }
+    setBusy(false)
+  }
+  return <>
+    <SheetHead icon={card.icon} title={nameOf(card)} status="off" />
+    <p className="intg-lead">{t('Create a personal API key on Garmin Connect (on the website, in your account settings), then paste it here. It is shown only once on Garmin, and it expires after the time you choose there.')}</p>
+    <Button variant="tinted" onClick={() => window.open(GARMIN_KEY_PAGE, '_blank', 'noopener')}>{t('Open Garmin Connect')}</Button>
+    <div className="intg-field">
+      <label className="intg-label" htmlFor="intg-garmin">{t('Garmin API key')}</label>
+      <TextField id="intg-garmin" name="garmin-key" type="password" autoComplete="off" autoCapitalize="off" spellCheck={false} placeholder={t('Paste the key')}
+        value={key} onChange={e => { setKey(e.target.value); setProblem(null) }} maxLength={512} aria-label={t('Garmin API key')}
+        aria-invalid={problem ? true : undefined} aria-describedby={problem ? 'intg-garmin-problem' : undefined} />
+      {problem && <div className="intg-problem" id="intg-garmin-problem" role="alert">{problem}</div>}
+    </div>
+    <Button variant="primary" disabled={busy || key.trim().length < 16} onClick={add}>{busy ? t('Checking…') : t('Connect')}</Button>
+  </>
+}
+
+function GarminManage({ close, conn: initial, card, server, toast }) {
+  const [c, setC] = useState(initial)
+  const [busy, setBusy] = useState(false)
+  const [progress, setProgress] = useState(null)
+  const run = async fn => { setBusy(true); try { await fn() } finally { setBusy(false); setProgress(null) } }
+  const sync = () => run(async () => {
+    const r = await syncGarmin({
+      api, connId: c.id, getS: () => useStore.getState().S, update: fn => useStore.getState().update(fn),
+      onProgress: (done, total) => setProgress(total ? { done, total } : null),
+    })
+    toast?.(garminMessage(r))
+    const d = await server.load()
+    const fresh = (d?.connections || []).find(x => x.id === c.id)
+    if (fresh) setC(fresh)
+  })
+  const test = () => run(async () => {
+    try {
+      const r = await api('/api/integrations/test', { method: 'POST', body: JSON.stringify({ id: c.id }) })
+      toast?.(r?.ok ? t('Garmin answered') : (r?.msg || t('Something went wrong')))
+      if (r?.connection) setC(r.connection)
+    } catch (e) { toast?.(errText(e, t('Something went wrong'))) }
+    server.load()
+  })
+  const disconnect = () => confirmSheet({
+    title: t('Disconnect Garmin?'), message: t('Your server forgets the key. Activities already imported stay.'), confirmText: t('Disconnect'), danger: true,
+    onConfirm: async () => {
+      try { await api('/api/integrations/disconnect', { method: 'POST', body: JSON.stringify({ id: c.id }) }); server.load(); close(); toast?.(t('Disconnected')) }
+      catch (e) { toast?.(errText(e, t('Something went wrong'))) }
+    },
+  })
+  return <>
+    <SheetHead icon={card.icon} title={nameOf(card)} status={statusOf(c)} />
+    {c.status === 'attention' && c.lastError && <div className="intg-problem" role="alert">{c.lastError.msg}</div>}
+    <Section>
+      <Row icon="clock" iconTint="var(--blue)" title={t('Last answer')} value={c.lastOk ? fmtAgo(c.lastOk) : t('Not yet')} />
+    </Section>
+    <Button variant="primary" disabled={busy} onClick={sync}>
+      {progress ? t('Getting {0} of {1}…', Math.min(progress.done + 1, progress.total), progress.total) : busy ? t('Working…') : t('Sync from Garmin')}
+    </Button>
+    <div className="sect-b" style={{ marginTop: 12 }}>
+      <ActRow icon="check" label={t('Test the connection')} onClick={test} disabled={busy} />
+    </div>
+    <DangerRow label={t('Disconnect')} onClick={disconnect} disabled={busy} />
+  </>
 }
 
 /* ---------------- webhooks ---------------- */

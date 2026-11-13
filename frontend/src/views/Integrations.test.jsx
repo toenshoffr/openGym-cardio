@@ -239,6 +239,83 @@ describe('webhooks', () => {
   })
 })
 
+describe('Garmin Connect', () => {
+  const garmin = over => ({ id: 'c_g', provider: 'garmin', label: 'Garmin Connect', events: [], paused: false, status: 'connected', info: {}, lastOk: null, ...over })
+  beforeEach(() => {
+    mocks.user = { id: 'u1', name: 'Dana' }
+    mocks.config = { integrations: { providers: ['webhook', 'garmin'] } }
+  })
+
+  it('connect: the key is sent once, tried at once, and a wrong one is said under the field', async () => {
+    mocks.answers['/api/integrations'] = { providers: [{ id: 'garmin', max: 1 }], connections: [] }
+    mocks.answers['/api/integrations/connect'] = { connection: garmin() }
+    mocks.answers['/api/integrations/test'] = { ok: false, msg: 'Garmin refused the key. It may have expired or been deleted: make a new one on Garmin Connect.' }
+    await mount()
+    expect(pill('garmin')).toBe('Off')
+    act(() => action('garmin').click())
+    await showSheet()
+    const input = sheetHost.querySelector('input')
+    expect(input.type).toBe('password')
+    expect(sheetBtn('Connect').disabled).toBe(true)
+    await type(input, 'short')
+    expect(sheetBtn('Connect').disabled).toBe(true)
+    await type(input, '  GOOD-KEY-0123456789  ')
+    await act(async () => { sheetBtn('Connect').click() })
+    expect(mocks.calls.find(c => c[0] === '/api/integrations/connect')[1]).toEqual({ provider: 'garmin', apiKey: 'GOOD-KEY-0123456789' })
+    expect(mocks.calls.some(c => c[0] === '/api/integrations/test')).toBe(true)
+    expect(sheetHost.querySelector('[role="alert"]').textContent).toContain('refused the key')
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+  })
+
+  it('a key Garmin accepts closes the sheet with a toast', async () => {
+    mocks.answers['/api/integrations'] = { providers: [{ id: 'garmin', max: 1 }], connections: [] }
+    mocks.answers['/api/integrations/connect'] = { connection: garmin() }
+    mocks.answers['/api/integrations/test'] = { ok: true }
+    closeSheet.mockClear()
+    await mount()
+    act(() => action('garmin').click())
+    await showSheet()
+    await type(sheetHost.querySelector('input'), 'GOOD-KEY-0123456789')
+    await act(async () => { sheetBtn('Connect').click() })
+    expect(mocks.toast).toHaveBeenCalledWith('Garmin connected')
+    expect(closeSheet).toHaveBeenCalled()
+  })
+
+  it('connected: sync asks the server for the list, test and disconnect work from the sheet', async () => {
+    mocks.answers['/api/integrations'] = { providers: [{ id: 'garmin', max: 1 }], connections: [garmin()] }
+    mocks.answers['/api/integrations/pull'] = { items: [], more: false, next: 0 }
+    mocks.answers['/api/integrations/test'] = { ok: true, connection: garmin() }
+    mocks.answers['/api/integrations/disconnect'] = { ok: true }
+    await mount()
+    expect(pill('garmin')).toBe('Connected')
+    act(() => action('garmin').click())
+    await showSheet()
+    await act(async () => { sheetBtn('Sync from Garmin').click() })
+    const pulled = mocks.calls.find(c => c[0] === '/api/integrations/pull')[1]
+    expect(pulled).toMatchObject({ id: 'c_g', op: 'list', start: 0 })
+    expect(mocks.toast).toHaveBeenCalledWith('Nothing new on Garmin')
+    await act(async () => { sheetBtn('Test the connection').click() })
+    expect(mocks.toast).toHaveBeenCalledWith('Garmin answered')
+    act(() => sheetBtn('Disconnect').click())
+    expect(mocks.confirm.title).toBe('Disconnect Garmin?')
+    await act(async () => { await mocks.confirm.onConfirm() })
+    expect(mocks.calls.find(c => c[0] === '/api/integrations/disconnect')[1]).toEqual({ id: 'c_g' })
+  })
+
+  it('on a server without it: hidden, or a hint to the admin', async () => {
+    mocks.config = { integrations: { providers: ['webhook'] } }
+    mocks.answers['/api/integrations'] = { providers: [{ id: 'webhook', max: 10 }], connections: [] }
+    await mount()
+    expect(card('garmin')).toBeNull()
+    mocks.user = { id: 'u1', admin: true }
+    await mount()
+    expect(pill('garmin')).toBe('Off')
+    act(() => action('garmin').click())
+    await showSheet()
+    expect(sheetHost.textContent).toContain('INTEGRATIONS=webhook,garmin')
+  })
+})
+
 describe('the Settings search', () => {
   it('finds the page and its cards by what people type', () => {
     const ctx = { user: null, mobile: false, demo: false }

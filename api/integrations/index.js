@@ -25,6 +25,7 @@ import { createOutbox, createBuckets } from './outbox.js';
 import { deriveKey, newId } from './crypto.js';
 import { detectEvents, eventData, envelope, testData, EVENTS } from './events.js';
 import { webhookProvider } from './providers/webhook.js';
+import { garminProvider } from './providers/garmin.js';
 
 const on = v => /^(1|true|yes|on)$/i.test(String(v || ''));
 
@@ -39,9 +40,9 @@ export function enabledIds(env, known) {
   return out;
 }
 
-export function createIntegrations({ dataDir, secret, env = process.env, now = Date.now, transport = null, version = 'dev' }) {
+export function createIntegrations({ dataDir, secret, env = process.env, now = Date.now, transport = null, garminTransport = null, version = 'dev' }) {
   const allowLan = on(env.INTEGRATIONS_ALLOW_LAN);
-  const all = { webhook: webhookProvider({ allowLan, transport, version }) };
+  const all = { webhook: webhookProvider({ allowLan, transport, version }), garmin: garminProvider({ transport: garminTransport, now }) };
   const ids = enabledIds(env, Object.keys(all)).filter(id => {
     if (all[id].configured(env)) return true;
     console.warn(`INTEGRATIONS: ${id} needs ${all[id].env.join(', ')}; left off`);
@@ -79,7 +80,7 @@ export function createIntegrations({ dataDir, secret, env = process.env, now = D
   // What a person may do per minute: connect, change and test.
   const userActs = createBuckets({ now });
   const userLimit = (uid, what) => {
-    const wait = userActs.take(what + ':' + uid, what === 'test' ? { capacity: 6, refillMs: 10_000 } : { capacity: 20, refillMs: 3000 });
+    const wait = userActs.take(what + ':' + uid, what === 'test' ? { capacity: 6, refillMs: 10_000 } : what === 'pull' ? { capacity: 120, refillMs: 1000 } : { capacity: 20, refillMs: 3000 });
     if (wait) throw Object.assign(new Error('slow down a little'), { status: 429, code: 'rate', retryAfter: Math.ceil(wait / 1000) });
   };
 
@@ -156,9 +157,31 @@ export function createIntegrations({ dataDir, secret, env = process.env, now = D
       return { connection: view(uid, next) };
     },
 
+    /** A pull provider's read (Garmin): `op` and `params` are the provider's own, the answer is its. */
+    async pull(uid, id, op, params) {
+      if (!active) off();
+      const rec = own(uid, id);
+      const p = providers[rec.provider];
+      if (!p.pull) fail(400, 'this integration has nothing to pull', 'kind');
+      if (rec.paused) fail(409, 'it is paused', 'paused');
+      userLimit(uid, 'pull');
+      try {
+        const out = await p.pull(op, params || {}, name => store.reveal(uid, rec, name), rec.id);
+        store.update(uid, id, r => { r.status = 'ok'; r.failures = 0; r.lastOk = now(); r.lastError = null; });
+        return out;
+      } catch (e) {
+        if (e?.status) {
+          // A refused key needs the person; a busy or unreachable Garmin does not.
+          if (e.code === 'key' || e.code === 'sealed') store.update(uid, id, r => { r.status = 'attention'; r.lastError = { at: now(), msg: e.message, code: e.code }; });
+        }
+        throw e;
+      }
+    },
+
     disconnect(uid, id) {
       if (!active) off();
       const rec = own(uid, id);
+      providers[rec.provider].forget?.(rec.id);
       store.remove(uid, id);
       outbox.dropConnection(uid, id);
       return { ok: true, provider: rec.provider, label: rec.label };

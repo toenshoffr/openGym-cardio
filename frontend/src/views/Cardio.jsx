@@ -2,7 +2,7 @@
 // Strava gives you (GPX, TCX or FIT): route, laps, a pace for every kilometre, and what it all says.
 // The logic is in lib/cardio*.js; this is only the screens. Nothing leaves the device: the route is
 // drawn here from the file's own coordinates, with no map tiles fetched from anywhere.
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
@@ -17,6 +17,9 @@ import {
   weekStart, weekTotals,
 } from '../lib/cardio.js'
 import { importActivityFiles } from '../lib/cardio-import.js'
+import { syncGarmin, garminMessage } from '../lib/garmin-sync.js'
+import { api } from '../lib/api.js'
+import { DEMO } from '../lib/demo.js'
 import { insightsOf } from '../lib/cardio-insights.js'
 import './Cardio.css'
 
@@ -165,9 +168,26 @@ function SessionRow({ x, onOpen, children }) {
   </div>
 }
 
+/** The Garmin connection of this profile (Settings → Integrations → Garmin Connect), or null. */
+function useGarmin() {
+  const user = useStore(s => s.user)
+  const offered = useStore(s => s.config?.integrations?.providers) || []
+  const on = !!user && !DEMO && offered.includes('garmin')
+  const [conn, setConn] = useState(null)
+  useEffect(() => {
+    if (!on) return undefined
+    let gone = false
+    api('/api/integrations').then(d => { if (!gone) setConn((d?.connections || []).find(c => c.provider === 'garmin' && !c.paused) || null) }).catch(() => {})
+    return () => { gone = true }
+  }, [on])
+  return conn
+}
+
 export default function Cardio() {
   const nav = useNavigate()
   const S = useStore(s => s.S)
+  const garmin = useGarmin()
+  const [syncing, setSyncing] = useState(null)
   const fileRef = useRef(null)
   const matchRef = useRef(null)
   const today = todayISO()
@@ -183,6 +203,17 @@ export default function Cardio() {
     const r = await runImport(files, matchId)
     if (r?.length === 1 && r[0].status === 'added') nav('/cardio/' + r[0].id)
   }
+  const syncFromGarmin = async () => {
+    if (!garmin || syncing) return
+    setSyncing({ done: 0, total: 0 })
+    try {
+      const r = await syncGarmin({
+        api, connId: garmin.id, getS: () => useStore.getState().S, update,
+        onProgress: (done, total) => setSyncing({ done, total }),
+      })
+      toast(garminMessage(r))
+    } finally { setSyncing(null) }
+  }
   return <div className="narrow">
     <div className="hdr">
       <button className="iconbtn" data-back="/stats" onClick={() => nav('/stats')} aria-label={t('Stats')}><Icon name="chevronLeft" /></button>
@@ -193,7 +224,10 @@ export default function Cardio() {
     <input ref={fileRef} type="file" multiple hidden onChange={onFiles} />
 
     <WeekCard S={S} />
-    <Button icon="download" variant="primary" onClick={() => pick(null)}>{t('Import from Strava or Garmin')}</Button>
+    {garmin && <><Button icon="watch" variant="primary" disabled={!!syncing} onClick={syncFromGarmin}>
+      {syncing?.total ? t('Getting {0} of {1}…', Math.min(syncing.done + 1, syncing.total), syncing.total) : syncing ? t('Working…') : t('Sync from Garmin')}
+    </Button><div style={{ height: 8 }} /></>}
+    <Button icon="download" variant={garmin ? 'tinted' : 'primary'} onClick={() => pick(null)}>{t('Import from Strava or Garmin')}</Button>
     <div className="small dim" style={{ margin: '8px 2px 0' }}>{t('Pick the GPX, TCX or FIT file of an activity. How to get one is in the docs.')}</div>
 
     <div className="row between" style={{ margin: '20px 2px 10px' }}>

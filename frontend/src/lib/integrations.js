@@ -33,6 +33,11 @@ export const CARDS = [
     syncs: ['Workouts, routines and weigh-ins, once.', 'The key is used for this import and then forgotten.'],
   },
   {
+    id: 'garmin', cat: 'training', name: 'Garmin Connect', icon: 'watch', tint: 'var(--blue)',
+    desc: 'Pull your runs and rides from Garmin with your own API key.',
+    syncs: ['Runs and rides, with the route, laps and a pace for every kilometre.', 'Uses your own Garmin API key. Your server keeps it and fetches for you.'],
+  },
+  {
     id: 'files', cat: 'training', name: 'Import a file', translate: true, icon: 'download', tint: 'var(--teal)',
     desc: 'Strong, FitNotes, Hevy CSV, GymMane or an Apple Health export.',
     syncs: ['Reads the export file of another app, once.', 'Exercises are matched to the library, you check the rest.'],
@@ -122,6 +127,13 @@ export function cardState(id, ctx) {
       if (mine.some(c => c.status === 'attention')) return { status: 'attention', action: 'manage' }
       return mine.every(c => c.paused) ? { status: 'off', action: 'manage' } : { status: 'connected', action: 'manage' }
     }
+    case 'garmin': {
+      if (ctx.demo || !ctx.user) return { status: 'server', action: null }
+      if (!(ctx.offered || []).includes('garmin')) return ctx.admin ? { status: 'off', action: 'open' } : null
+      const mine = (ctx.server?.connections || []).find(c => c.provider === 'garmin')
+      if (!mine) return { status: 'off', action: 'connect' }
+      return { status: mine.status === 'attention' ? 'attention' : mine.paused ? 'off' : 'connected', action: 'manage' }
+    }
     case 'coach':
       if (ctx.mobile) return { status: ctx.coachMode ? 'connected' : 'off', action: ctx.coachMode ? 'manage' : 'connect' }
       return ctx.coach ? { status: 'connected', action: 'open' } : null
@@ -134,7 +146,7 @@ export function cardState(id, ctx) {
 }
 
 // The module (lib/modules.js) a card belongs to: with it off, the card is not in the directory.
-export const CARD_MODULE = { 'apple-health': 'health', 'health-connect': 'health', webhook: 'integrations', mcp: 'integrations', coach: 'coach' }
+export const CARD_MODULE = { 'apple-health': 'health', 'health-connect': 'health', garmin: 'cardio', webhook: 'integrations', mcp: 'integrations', coach: 'coach' }
 
 /** The directory for this device: categories with their visible cards, empty ones left out.
  *  `ctx.mod(id)` says whether a module is on (absent: all on). */

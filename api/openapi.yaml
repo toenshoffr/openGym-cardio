@@ -2527,12 +2527,13 @@ paths:
     post:
       tags: [integrations]
       operationId: connectIntegration
-      summary: Add a connection (a webhook)
+      summary: Add a connection (a webhook, or a Garmin key)
       description: |
         For `provider: webhook`: `url` (https, or http to a home-network address when
         `INTEGRATIONS_ALLOW_LAN=1`; never loopback, link-local or, by default, a private
         address), an optional `label` (60 characters) and `events` (at least one; default
-        `workout.finished`). At most 10 webhooks a profile. The answer's `reveal.secret` is
+        `workout.finished`). For `provider: garmin`: `apiKey`, a Personal API key from Garmin
+        Connect Web (at most one a profile; no `reveal`). At most 10 webhooks a profile. The answer's `reveal.secret` is
         the signing secret, **shown this once**: the server keeps it sealed and never sends
         it again. Payloads and the signature: docs/INTEGRATIONS.md.
       requestBody:
@@ -2541,9 +2542,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [provider, url]
+              required: [provider]
               properties:
                 provider: { type: string, example: webhook }
+                apiKey: { type: string, maxLength: 512, description: 'garmin: the Personal API key' }
                 url: { type: string, maxLength: 2048, example: 'https://ha.example.com/api/webhook/opengym-7f3a' }
                 label: { type: string, maxLength: 60 }
                 events: { type: array, items: { $ref: '#/components/schemas/IntegrationEvent' } }
@@ -2667,6 +2669,82 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/IntegrationsOff' }
         '429': { $ref: '#/components/responses/IntegrationsSlowDown' }
+
+  /api/integrations/pull:
+    post:
+      tags: [integrations]
+      operationId: pullIntegration
+      summary: Read from a connection that is pulled from (Garmin Connect)
+      description: |
+        For `provider: garmin`, the Personal API of Garmin Connect (the person's own API key,
+        sealed on the server). `op: list` answers the newest runs and rides
+        (`start`, `limit` up to 100); `op: file` answers the original file of one activity
+        (`activity`, an id from the list) as base64. Garmin documents the calls; see
+        docs/CARDIO.md for what is not verified. 120 a minute per profile.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, op]
+              properties:
+                id: { type: string, description: The connection's id. }
+                op: { type: string, enum: [list, file] }
+                start: { type: integer, minimum: 0, description: 'list: offset' }
+                limit: { type: integer, minimum: 1, maximum: 100, description: 'list: page size, default 50' }
+                activity: { type: string, description: 'file: the activity id' }
+      responses:
+        '200':
+          description: The list or the file.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    description: 'list: runs and rides, newest first'
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        sport: { type: string, enum: [run, bike] }
+                        name: { type: string }
+                        start: { type: integer, description: Start time in ms since 1970. }
+                        distM: { type: ['integer', 'null'] }
+                        sec: { type: ['integer', 'null'] }
+                  more: { type: boolean, description: 'list: the page was full, there may be older ones' }
+                  next: { type: integer, description: 'list: the offset of the next page' }
+                  name: { type: string, description: 'file: the file name inside the zip' }
+                  data: { type: string, description: 'file: the file, base64' }
+        '400':
+          description: 'Not a pull connection, or a bad id or op (`code`: `kind`, `activity`, `op`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: 'Not signed in, or Garmin refused the key (`code`: `key`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/IntegrationsOff' }
+        '409':
+          description: 'The connection is paused or its settings cannot be read (`code`: `paused`, `sealed`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/IntegrationsSlowDown' }
+        '502':
+          description: 'Garmin could not be reached or sent something unreadable (`code`: `dns`, `network`, `garmin`, `token`, `file`, `big`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '504':
+          description: 'Garmin did not answer in time (`code`: `timeout`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 
   /api/integrations/retry:
     post:
