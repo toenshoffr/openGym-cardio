@@ -91,6 +91,8 @@ machine, never in CI (see "Exercise media" below and docs/APP_STORES.md).
   - `coach-adapt.js`: applies the Coach's changes to the workout in progress (the `adapt` job).
   - `workout-model.js`, `supersetFlow.js`: the in-session workout state machine.
   - `sync-merge.js`: the field-by-field merge behind the 409 retry (see "Sync" below).
+  - `cardio*.js`: runs and rides (`S.cardio`, synced per session): GPX/TCX/FIT readers, the split and
+    best-effort analysis, planning, insights and the file import. Docs: docs/CARDIO.md.
   - `exercises.js` / `exercises-data.js`: the exercise library (5,632 catalogue exercises plus
     user-defined ones). `exercises-data.js`, `instr/`, `exercise-names/` and `exercise-desc/` are
     generated from `catalogue/` by `scripts/catalogue/build.mjs`; never edit them by hand.

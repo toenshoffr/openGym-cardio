@@ -113,6 +113,9 @@ export const DEF = {
   // running ({ id, startedOn, pausedOn?, cycle, bump, saved }) or null. Starting one writes its
   // schedule into `week` or `rotation` above, so everything that reads those follows it.
   programmes: {}, programme: null,
+  // Cardio (lib/cardio.js): runs and rides, planned or imported from a GPX, TCX or FIT file,
+  // { [id]: session }, merged per session like programmes.
+  cardio: {},
   exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full',
   // Stats activity heatmap metric. Profiles without this key continue to open on time.
   heatmapMetric: 'time',

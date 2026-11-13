@@ -163,6 +163,7 @@ export default function Plan() {
         { icon: 'note', label: t('Print / Save as PDF'), disabled: !has, onClick: printWholePlan },
         { icon: 'download', label: t('Import a plan file'), onClick: () => fileRef.current?.click() },
         { icon: 'clipboard', label: t('Load starter plan'), onClick: starterPlanSheet },
+        ...(isOn(S, 'cardio') ? [{ icon: 'figureRun', label: t('Cardio'), sub: t('Plan runs and rides, import them from Strava or Garmin, and see every kilometre.'), onClick: () => nav('/cardio') }] : []),
         { icon: 'calendar', label: t('Programmes'), sub: t('Your routines as a block of weeks, with starter programmes to try.'), onClick: () => nav('/plan/programmes') },
       ],
     })

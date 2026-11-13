@@ -34,6 +34,8 @@ export const MODULES = [
     desc: 'Log sets from your wrist on an Apple Watch, Wear OS or Zepp watch.' },
   { id: 'checkin', group: 'training', icon: 'qr', tint: 'var(--blue)', title: 'Gym check-in',
     desc: 'Your membership codes on Home, and NFC stickers that start a workout.' },
+  { id: 'cardio', group: 'training', icon: 'figureRun', tint: 'var(--blue)', title: 'Cardio',
+    desc: 'Plan runs and rides, import them from Strava or Garmin, and see every kilometre.' },
   { id: 'body', group: 'body', icon: 'scale', tint: 'var(--teal)', title: 'Body',
     desc: 'Weigh-ins, measurements, progress photos and your weight goal.' },
   { id: 'health', group: 'body', icon: 'heart', tint: 'var(--red)', title: 'Health',
@@ -57,7 +59,7 @@ export const GROUPS = [
 ]
 
 /* The presets, smallest first. Each names the modules it turns on; every other one is off. */
-const TRAINING = ['effort', 'plates', 'watch']
+const TRAINING = ['effort', 'plates', 'watch', 'cardio']
 export const PRESETS = [
   { id: 'training', title: 'Just training', desc: 'Log, plan, progress. Nothing else on the screen.', on: TRAINING },
   { id: 'body', title: 'Training and body', desc: 'Plus weigh-ins, measurements, photos and your health apps.', on: [...TRAINING, 'strength', 'body', 'health'] },

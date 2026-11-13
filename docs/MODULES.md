@@ -23,6 +23,7 @@ cannot be switched off.
 | **Form videos** | Filming a set, the video badge on a set row, the form videos in an exercise's detail. Videos you filmed stay. |
 | **Watch** | The Apple Watch and Zepp OS pages. A paired Apple Watch, Wear OS, Zepp or Garmin watch is told there is nothing to show, as with the watch's own off switch. It stays paired. |
 | **Gym check-in** | The check-in card on Home, the check-in screen with your membership codes, NFC stickers. Your cards stay. Before 1.4.4 this had its own switch in Look & Home, which still counts until you set the module. |
+| **Cardio** | Plan runs and rides, import them from Strava or Garmin files, see the route and every kilometre ([Cardio](CARDIO.md)). The Cardio row in Stats, the Plan menu entry and the screens go away; your sessions stay. |
 | **Body** | The body weight card on Home, the Body part of Stats (weight chart, goal, measurements, progress photos) and its Weight 30d figure, the weigh-in before a workout, the measurements and photos screens, the weight block of the widgets, the body weight settings. |
 | **Health** | The Apple Health and Health Connect pages and cards, the Works with list, live heart rate during a workout, recovery tips on Home. Syncing with the health app pauses (see below). |
 | **Motivation** | The streak card on Home and in Stats, monthly challenges and the trophy shelf, the week and month recap, Your year (its Home card, its Stats rows and its December notification), Share as image, the streak on the watch. With it off, Weekly sets on Home gets a small card of its own. |
@@ -38,7 +39,7 @@ would send, widget fields.
 
 The row at the top picks a preset for every module at once:
 
-- **Just training**: Effort, Plates and warm-ups, Watch. Everything else off.
+- **Just training**: Effort, Plates and warm-ups, Watch, Cardio. Everything else off.
 - **Training and body**: Just training plus Strength levels, Body and Health.
 - **Everything**: every module on.
 - **Custom** is what the row says once you flip a switch away from a preset.

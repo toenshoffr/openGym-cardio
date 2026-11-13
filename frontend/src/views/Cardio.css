@@ -1,0 +1,41 @@
+/* Cardio screens (views/Cardio.jsx). Colours come from the app's own tokens, so every theme and
+   the light/dark switch follow without a rule of their own. */
+.cardio-week .big { font-size: var(--fs-large); font-weight: 700; letter-spacing: var(--ls-large); }
+.cardio-bars { display: flex; align-items: flex-end; gap: 6px; height: 56px; margin: 12px 0 6px; }
+.cardio-bar { flex: 1; background: var(--surface-3); border-radius: 4px 4px 2px 2px; min-height: 3px; }
+.cardio-bar.now { background: var(--acc); }
+
+.cardio-row { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.cardio-ico { width: 40px; height: 40px; flex: none; border-radius: 12px; display: grid; place-items: center;
+  background: var(--acc-soft); color: var(--acc-ink); }
+.cardio-ico[data-sport="bike"] { background: rgba(10, 132, 255, .16); background: color-mix(in srgb, var(--blue) 16%, transparent); color: var(--blue); }
+.cardio-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cardio-act { display: flex; align-items: center; gap: 8px; flex: none; }
+.cardio-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin: 12px 0; }
+.cardio-fields label { display: grid; gap: 4px; min-width: 0; }
+.cardio-fields .input { width: 100%; box-sizing: border-box; }
+
+.cardio-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 12px; }
+.cardio-stat-v { font-size: var(--fs-title3); font-weight: 650; letter-spacing: var(--ls-title); font-variant-numeric: tabular-nums; }
+.cardio-insight { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; line-height: var(--lh-body); }
+.cardio-insight svg { flex: none; margin-top: 2px; color: var(--acc-ink); }
+.cardio-insight + .cardio-insight { border-top: var(--hair) solid var(--sep-op); }
+
+.cardio-map, .cardio-profile { width: 100%; height: auto; display: block; }
+.cardio-ax { font-size: 9px; fill: var(--label-2); font-variant-numeric: tabular-nums; }
+.cardio-key { display: inline-block; width: 56px; height: 6px; border-radius: 3px; vertical-align: middle;
+  background: linear-gradient(90deg, hsl(30 85% 55%), hsl(85 85% 55%), hsl(140 85% 55%)); }
+.cardio-link { display: inline-flex; align-items: center; gap: 4px; color: var(--acc-ink); text-decoration: none; }
+
+.cardio-table { padding: 6px 12px; }
+.cardio-th, .cardio-tr { display: grid; grid-template-columns: 38px 1fr 56px 48px 40px; gap: 8px; align-items: center;
+  padding: 7px 0; font-variant-numeric: tabular-nums; font-size: var(--fs-subhead); }
+.cardio-th.laps, .cardio-tr.laps { grid-template-columns: 30px 1fr 1fr 1fr 40px; }
+.cardio-th { color: var(--label-2); font-size: var(--fs-caption); }
+.cardio-th span:not(:first-child), .cardio-tr > :not(:first-child):not(.cardio-barwrap) { text-align: end; }
+.cardio-tr + .cardio-tr { border-top: var(--hair) solid var(--sep-op); }
+.cardio-barwrap { height: 8px; background: var(--surface-3); border-radius: 4px; overflow: hidden; }
+.cardio-barwrap i { display: block; height: 100%; background: var(--acc); border-radius: 4px; }
+.cardio-tr.fast .cardio-barwrap i { background: var(--green); }
+.cardio-tr.slow .cardio-barwrap i { background: var(--orange); }
+.cardio-bests .row + .row { border-top: var(--hair) solid var(--sep-op); padding-top: 8px; margin-top: 8px; }
