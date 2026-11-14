@@ -12,13 +12,16 @@ import { isOn } from '../lib/modules.js'
 const normalizeMetric = value => value === 'vol' ? 'vol' : 'time'
 
 // GitHub-style activity heatmap, shaded by the selected time or volume metric per day.
-export default function Heatmap({ S, onDay, metric: selectedMetric, onMetricChange }) {
+// With `counts` ({ 'YYYY-MM-DD': n }) it draws those instead, with no Time/Volume switch: the
+// progress-photo gallery's chart of the days that have photos (#949). `legend` is then the
+// [fewer, more] words at the ends of the scale and `countLabel(n)` a day's tooltip.
+export default function Heatmap({ S, onDay, metric: selectedMetric, onMetricChange, counts, legend, countLabel }) {
   const wrapRef = useRef(null)
   const [localMetric, setLocalMetric] = useState(() => normalizeMetric(selectedMetric ?? S?.heatmapMetric))
   useEffect(() => { if (wrapRef.current) wrapRef.current.scrollLeft = wrapRef.current.scrollWidth }, [])
 
   const metric = normalizeMetric(selectedMetric ?? localMetric)
-  const metricValue = metric === 'vol' ? 'vol' : 'min'
+  const metricValue = counts ? 'n' : metric === 'vol' ? 'vol' : 'min'
   const changeMetric = value => {
     const next = normalizeMetric(value)
     if (selectedMetric == null) setLocalMetric(next)
@@ -26,7 +29,9 @@ export default function Heatmap({ S, onDay, metric: selectedMetric, onMetricChan
   }
 
   const agg = {}
-  ;(S.workouts || []).forEach(w => {
+  if (counts) {
+    for (const [day, n] of Object.entries(counts)) if (n > 0) agg[day] = { n }
+  } else (S.workouts || []).forEach(w => {
     const day = workoutDay(w)
     if (!day) return
     const a = agg[day] = agg[day] || { n: 0, vol: 0, min: 0 }
@@ -37,7 +42,7 @@ export default function Heatmap({ S, onDay, metric: selectedMetric, onMetricChan
   })
   // Cardio (lib/cardio.js) trains too: a run or a ride makes its day count, shaded by its moving
   // time. It has no volume, so on the Volume view a cardio-only day is the lightest shade.
-  if (isOn(S, 'cardio')) {
+  if (!counts && isOn(S, 'cardio')) {
     for (const [day, c] of Object.entries(cardioByDay(S))) {
       const a = agg[day] = agg[day] || { n: 0, vol: 0, min: 0 }
       a.c = c.n; a.m = c.m
@@ -74,18 +79,19 @@ export default function Heatmap({ S, onDay, metric: selectedMetric, onMetricChan
       const a = agg[key]
       // A day off with a note (#261): outlined, its note in the tooltip, and tappable like a
       // trained day so the note can be read (and changed) on a phone too.
-      const note = !a && dayNoteOf(S, key)
+      const note = !counts && !a && dayNoteOf(S, key)
       const cls = 'hm-c l' + level(a) + (note ? ' noted' : '') + (key === todayISO() ? ' today' : '') + (day > today ? ' future' : '')
       cells.push(<div key={d} className={cls}
-        title={key + (a ? (a.n ? ` · ${tn('{0} workout', '{0} workouts', a.n)}` : '') + (a.c ? ` · ${t('Cardio')} ${fmtKm(a.m)} ${t('km')}` : '') + ` · ${t('{0} min', a.min)}` + (a.n ? ` · ${fmtVol(a.vol, S.unit)}` : '') : note ? ` · ${dayNoteLine(note, t)}` : '')}
+        title={key + (a && counts ? ` · ${countLabel ? countLabel(a.n) : a.n}` : a ? (a.n ? ` · ${tn('{0} workout', '{0} workouts', a.n)}` : '') + (a.c ? ` · ${t('Cardio')} ${fmtKm(a.m)} ${t('km')}` : '') + ` · ${t('{0} min', a.min)}` + (a.n ? ` · ${fmtVol(a.vol, S.unit)}` : '') : note ? ` · ${dayNoteLine(note, t)}` : '')}
         {...tappable(a || note ? () => onDay?.(key) : undefined)} />)
     }
     cols.push(<div key={wk} className="hm-col">{cells}</div>)
   }
 
+  const [less, more] = counts ? (legend || ['', '']) : [t(metric === 'vol' ? 'Less volume' : 'Less time'), t(metric === 'vol' ? 'More volume' : 'More time')]
   return <>
-    <Segmented value={metric} onChange={changeMetric}
-      options={[{ value: 'time', label: t('Time') }, { value: 'vol', label: t('Volume') }]} />
+    {!counts && <Segmented value={metric} onChange={changeMetric}
+      options={[{ value: 'time', label: t('Time') }, { value: 'vol', label: t('Volume') }]} />}
     <div className="hm-wrap" ref={wrapRef}>
       <div className="hm-months" style={{ marginInlineStart: 30 }}>{months}</div>
       <div className="hm-body">
@@ -93,6 +99,6 @@ export default function Heatmap({ S, onDay, metric: selectedMetric, onMetricChan
         <div className="hm-grid">{cols}</div>
       </div>
     </div>
-    <div className="hm-legend">{t(metric === 'vol' ? 'Less volume' : 'Less time')} <div className="hm-c l0" /><div className="hm-c l1" /><div className="hm-c l2" /><div className="hm-c l3" /><div className="hm-c l4" /> {t(metric === 'vol' ? 'More volume' : 'More time')}</div>
+    <div className="hm-legend">{less} <div className="hm-c l0" /><div className="hm-c l1" /><div className="hm-c l2" /><div className="hm-c l3" /><div className="hm-c l4" /> {more}</div>
   </>
 }

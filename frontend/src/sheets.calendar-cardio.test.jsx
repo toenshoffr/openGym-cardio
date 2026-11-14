@@ -29,11 +29,13 @@ const render = () => {
   return host
 }
 const run = (S, d, m = 5000, title = '') => addDone(S, analyze(parseGpx(gpxOf(makeTrack({ legs: [[m, 300]], t0: new Date(2026, 10, d, 7).getTime() })))), { title })
+// main added a weeks-in-a-row line above the month line: the month line is the last small muted one.
+const monthLine = host => [...host.querySelectorAll('.small.muted')].at(-1)
 const day = (host, n) => [...host.querySelectorAll('.cal-d')].find(b => b.querySelector('span').textContent === String(n))
 const setS = fn => useStore.setState(s => { const S = clone(s.S); S.workouts = []; S.cardio = {}; S.cardioWeek = {}; S.routines = []; S.week = {}; S.dayPlan = {}; delete S.modules; fn?.(S); return { S } })
 let original
 beforeEach(() => { globalThis.IS_REACT_ACT_ENVIRONMENT = true; original = useStore.getState().S; navs.length = 0; useUI.setState({ sheets: [] }); document.body.innerHTML = '' })
-afterEach(() => { act(() => { mounted.splice(0).forEach(r => r.unmount()) }); useStore.setState({ S: original }) })
+afterEach(() => { vi.useRealTimers(); act(() => { mounted.splice(0).forEach(r => r.unmount()) }); useStore.setState({ S: original }) })
 
 describe('the calendar with cardio', () => {
   it('marks a run day as trained and adds the distance to the month line', () => {
@@ -43,15 +45,24 @@ describe('the calendar with cardio', () => {
     expect(day(host, 4).className).toContain('has')
     expect(day(host, 4).querySelector('i').className).toBe('done')
     expect(day(host, 5).className).not.toContain('has')
-    expect(host.querySelector('.small.muted').textContent).toBe('Cardio · 8 km')
+    expect(monthLine(host).textContent).toBe('Cardio · 8 km')
   })
 
   it('a planned run shows as planned, a weekly one too', () => {
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date(2026, 10, 10, 12))
     setS(S => { addPlanned(S, { sport: 'run', date: '2026-11-12' }) })
     calendarSheet('2026-11-01')
     const host = render()
     expect(day(host, 12).querySelector('i').className).toBe('plan')
     expect(day(host, 13).querySelector('i').className).toBe('')
+  })
+
+  it('a planned run gone by without being done is missed, like a planned workout', () => {
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date(2026, 10, 10, 12))
+    setS(S => { addPlanned(S, { sport: 'run', date: '2026-11-05' }) })
+    calendarSheet('2026-11-01')
+    const host = render()
+    expect(day(host, 5).querySelector('i').className).toBe('miss')
   })
 
   it('a single run opens that session', () => {
@@ -68,7 +79,7 @@ describe('the calendar with cardio', () => {
     setS(S => { id = run(S, 4, 5000, 'Jog'); S.workouts = [{ id: 'w1', d: '2026-11-04', start: new Date(2026, 10, 4, 18).getTime(), end: new Date(2026, 10, 4, 19).getTime(), name: 'Push', entries: [] }] })
     calendarSheet('2026-11-01')
     const host = render()
-    expect(host.querySelector('.small.muted').textContent).toMatch(/^1 workout · .* · Cardio 5 km$/)
+    expect(monthLine(host).textContent).toMatch(/^1 workout · .* · Cardio 5 km$/)
     act(() => day(host, 4).click())
     const list = render()
     expect(list.textContent).toContain('Jog')
@@ -82,6 +93,6 @@ describe('the calendar with cardio', () => {
     calendarSheet('2026-11-01')
     const host = render()
     expect(day(host, 4).className).not.toContain('has')
-    expect(host.querySelector('.small.muted').textContent).toBe('No workouts this month')
+    expect(monthLine(host).textContent).toBe('No workouts this month')
   })
 })
