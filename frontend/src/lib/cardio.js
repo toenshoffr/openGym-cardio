@@ -8,6 +8,14 @@
 //            (start, distM, movingSec, elapsedSec, elevGain, splits, laps, best, pts, ...),
 //            plus `plan` kept from the planned session it was matched to, if there was one.
 //
+// The Plan screen's weekly rhythm is `S.cardioWeek`, { [id]: slot } with a slot { id, wd (0 = Sunday),
+// sport, title, plan, from (the day it was added) }, merged per slot too. A slot is not a pile of
+// sessions made ahead: it shows on every matching weekday from `from` on as a virtual planned
+// session (id `slot:<slot>:<day>`, planFor / planOf) and only becomes a real one on the day it
+// is imported, edited for that day, or skipped. A real session that came from a slot carries
+// `slot`; deleting it leaves a bare { status: 'skipped' } marker so the slot does not show again
+// on that day.
+//
 // Importing never invents a session out of a file already imported (same start time and sport),
 // and fills a planned one when it can (suggestMatch). Everything here is pure; the screen calls
 // useStore.update with these.
@@ -23,7 +31,7 @@ const isMap = v => !!v && typeof v === 'object' && !Array.isArray(v)
 /** Every session, newest date first (a day's sessions by start time, planned ones last). */
 export function cardioList(S) {
   const m = isMap(S?.cardio) ? S.cardio : {}
-  return Object.values(m).filter(x => isMap(x) && x.id && x.date)
+  return Object.values(m).filter(x => isMap(x) && x.id && x.date && x.status !== 'skipped')
     .sort((a, b) => b.date.localeCompare(a.date) || (Number(b.start) || 0) - (Number(a.start) || 0))
 }
 export const doneList = S => cardioList(S).filter(x => x.status === 'done')
@@ -43,20 +51,6 @@ export function addPlanned(s, { sport, date, title = '', distM = null, sec = nul
   return id
 }
 
-/** The same session every week for `weeks` weeks from `date` (1 to 12): one planned session per week. Returns the ids. */
-export function addPlannedWeekly(s, spec, weeks = 1, now = Date.now()) {
-  const n = Math.max(1, Math.min(12, Math.round(weeks) || 1))
-  const ids = []
-  for (let i = 0; i < n; i++) {
-    const d = new Date(spec.date + 'T12:00:00'); d.setDate(d.getDate() + 7 * i)
-    ids.push(addPlanned(s, { ...spec, date: isoOf(d) }, now))
-  }
-  return ids
-}
-
-/** Everything on one calendar day, planned and done, planned first. */
-export const cardioOnDay = (S, iso) => cardioList(S).filter(x => x.date === iso).sort((a, b) => (a.status === 'planned' ? 0 : 1) - (b.status === 'planned' ? 0 : 1))
-
 /** Changes a planned session's own fields (sport, date, title, plan). A done one keeps its data. */
 export function editSession(s, id, patch, now = Date.now()) {
   const x = s.cardio?.[id]
@@ -74,9 +68,111 @@ export function editSession(s, id, patch, now = Date.now()) {
   return true
 }
 
+/** Removes a session. One that came from a weekly slot (or is a slot's virtual day) leaves a marker, so the slot does not show on that day again. */
 export function removeSession(s, id) {
-  if (s.cardio && id in s.cardio) { delete s.cardio[id]; return true }
+  const v = parseVirtual(id)
+  if (v) {
+    if (!isMap(s.cardio)) s.cardio = {}
+    const mid = 'c' + uid()
+    s.cardio[mid] = { id: mid, slot: v.slot, date: v.date, status: 'skipped', _ts: Date.now() }
+    return true
+  }
+  const x = s.cardio?.[id]
+  if (!x) return false
+  if (x.slot) s.cardio[id] = { id, slot: x.slot, date: x.date, status: 'skipped', _ts: Date.now() }
+  else delete s.cardio[id]
+  return true
+}
+
+/* ------------------------------------------------------------- the weekly plan -- */
+
+export const slotList = S => (isMap(S?.cardioWeek) ? Object.values(S.cardioWeek) : []).filter(x => isMap(x) && x.id && x.wd >= 0 && x.wd <= 6)
+/** The slots of one weekday (0 = Sunday), in the order added. */
+export const slotsOnWeekday = (S, wd) => slotList(S).filter(x => x.wd === wd).sort((a, b) => (a._ts || 0) - (b._ts || 0))
+
+/** Adds a slot: the same run or ride every `wd`, from today (or `from`) on. Returns its id. */
+export function addSlot(s, { wd, sport, title = '', distM = null, sec = null, note = '', from = null }, now = Date.now()) {
+  if (!isMap(s.cardioWeek)) s.cardioWeek = {}
+  const id = 's' + uid()
+  const plan = {}
+  if (distM > 0) plan.distM = Math.round(distM)
+  if (sec > 0) plan.sec = Math.round(sec)
+  if (note) plan.note = String(note).slice(0, 500)
+  s.cardioWeek[id] = { id, wd: ((wd % 7) + 7) % 7, sport: sportOr(sport), title: String(title).slice(0, 80), plan, from: from || isoOf(new Date(now)), _ts: now }
+  return id
+}
+export function editSlot(s, id, patch, now = Date.now()) {
+  const x = s.cardioWeek?.[id]
+  if (!x) return false
+  if (patch.sport) x.sport = sportOr(patch.sport)
+  if (patch.title != null) x.title = String(patch.title).slice(0, 80)
+  if (patch.plan) {
+    const plan = { ...(x.plan || {}) }
+    for (const k of ['distM', 'sec']) if (k in patch.plan) { if (patch.plan[k] > 0) plan[k] = Math.round(patch.plan[k]); else delete plan[k] }
+    if ('note' in patch.plan) { if (patch.plan.note) plan.note = String(patch.plan.note).slice(0, 500); else delete plan.note }
+    x.plan = plan
+  }
+  x._ts = now
+  return true
+}
+/** Takes a slot out of the weekly plan. Days already done or edited keep their sessions. */
+export function removeSlot(s, id) {
+  if (s.cardioWeek && id in s.cardioWeek) { delete s.cardioWeek[id]; return true }
   return false
+}
+
+export const virtualId = (slot, iso) => `slot:${slot}:${iso}`
+export function parseVirtual(id) {
+  const m = /^slot:([^:]+):(\d{4}-\d{2}-\d{2})$/.exec(String(id || ''))
+  return m ? { slot: m[1], date: m[2] } : null
+}
+const covered = (S, slotId, iso) => Object.values(isMap(S?.cardio) ? S.cardio : {}).some(x => isMap(x) && x.slot === slotId && x.date === iso)
+const virtualOf = (slot, iso) => ({ id: virtualId(slot.id, iso), virtual: true, slot: slot.id, sport: slot.sport, date: iso, status: 'planned', title: slot.title || '', plan: slot.plan || {} })
+
+/**
+ * Everything planned or done on a day: the real sessions, planned first, then the weekly slots of
+ * that weekday that nothing on that day has taken over yet, as virtual planned sessions.
+ */
+export function planFor(S, iso) {
+  const real = cardioList(S).filter(x => x.date === iso).sort((a, b) => (a.status === 'planned' ? 0 : 1) - (b.status === 'planned' ? 0 : 1))
+  const wd = new Date(iso + 'T12:00:00').getDay()
+  const virtual = slotsOnWeekday(S, wd).filter(x => iso >= (x.from || '') && !covered(S, x.id, iso)).map(x => virtualOf(x, iso))
+  const planned = [...real.filter(x => x.status === 'planned'), ...virtual], done = real.filter(x => x.status === 'done')
+  return [...planned, ...done]
+}
+export const cardioOnDay = planFor
+
+/** A session by id, real or a slot's virtual day; null when it is neither (or was skipped). */
+export function planOf(S, id) {
+  const v = parseVirtual(id)
+  if (!v) { const x = S?.cardio?.[id]; return x && x.status !== 'skipped' ? x : null }
+  const slot = S?.cardioWeek?.[v.slot]
+  if (!slot || new Date(v.date + 'T12:00:00').getDay() !== slot.wd || covered(S, v.slot, v.date)) return null
+  return virtualOf(slot, v.date)
+}
+
+/** Makes a virtual day a real planned session (a real id comes back unchanged). Returns the id. */
+export function materialize(s, id, now = Date.now()) {
+  const v = parseVirtual(id)
+  if (!v) return id
+  const x = planOf(s, id)
+  if (!x) return null
+  if (!isMap(s.cardio)) s.cardio = {}
+  const mid = 'c' + uid()
+  s.cardio[mid] = { id: mid, slot: x.slot, sport: x.sport, date: x.date, status: 'planned', title: x.title, plan: { ...x.plan }, _ts: now }
+  return mid
+}
+
+/** The planned sessions to show from `from` for `days` days: real ones of any date (an open one
+ *  from the past included) and the slots' days in that window, oldest first. */
+export function upcoming(S, from, days = 14) {
+  const out = cardioList(S).filter(x => x.status === 'planned')
+  const end = new Date(from + 'T12:00:00'); end.setDate(end.getDate() + days)
+  for (let d = new Date(from + 'T12:00:00'); d < end; d.setDate(d.getDate() + 1)) {
+    const iso = isoOf(d)
+    out.push(...planFor(S, iso).filter(x => x.virtual))
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date))
 }
 
 /** Whether a session with this file's start time (± a minute) and sport is already stored. */
@@ -93,7 +189,11 @@ const dayDiff = (a, b) => Math.round((Date.parse(a + 'T00:00:00Z') - Date.parse(
  */
 export function suggestMatch(S, a) {
   const day = dayOf(a.start)
-  const cands = cardioList(S).filter(x => x.status === 'planned' && (!a.sport || x.sport === a.sport) && Math.abs(dayDiff(x.date, day)) <= 1)
+  const cands = []
+  for (const k of [-1, 0, 1]) {
+    const d = new Date(day + 'T12:00:00'); d.setDate(d.getDate() + k)
+    cands.push(...planFor(S, isoOf(d)).filter(x => x.status === 'planned' && (!a.sport || x.sport === a.sport)))
+  }
   if (!cands.length) return null
   const gap = x => x.plan?.distM ? Math.abs(x.plan.distM - a.distM) : Infinity
   cands.sort((p, q) => Math.abs(dayDiff(p.date, day)) - Math.abs(dayDiff(q.date, day)) || gap(p) - gap(q))
@@ -107,7 +207,9 @@ export function suggestMatch(S, a) {
  */
 export function addDone(s, a, { matchId = null, sport = null, title = '' } = {}, now = Date.now()) {
   if (!isMap(s.cardio)) s.cardio = {}
-  const planned = matchId && s.cardio[matchId]?.status === 'planned' ? s.cardio[matchId] : null
+  // A weekly slot's day becomes a real session first, so there is something to fill in place.
+  const realId = matchId && planOf(s, matchId)?.status === 'planned' ? materialize(s, matchId, now) : null
+  const planned = realId ? s.cardio[realId] : null
   const id = planned ? planned.id : 'c' + uid()
   const sp = sportOr(a.sport || planned?.sport || sport || guessSport(a))
   const day = dayOf(a.start)
@@ -116,6 +218,7 @@ export function addDone(s, a, { matchId = null, sport = null, title = '' } = {},
     ...rest, id, sport: sp, date: day, status: 'done',
     title: String(title || planned?.title || name || '').slice(0, 80),
     ...(planned?.plan && Object.keys(planned.plan).length ? { plan: planned.plan } : {}),
+    ...(planned?.slot ? { slot: planned.slot } : {}),
     _ts: now,
   }
   return id

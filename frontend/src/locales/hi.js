@@ -3755,5 +3755,11 @@ export default {
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "आपकी अपनी Garmin API कुंजी इस्तेमाल करता है। आपका सर्वर उसे रखता है और आपके लिए डेटा लाता है।",
   "Plan a ride": "साइकिलिंग की योजना बनाएँ",
   "Plan a run": "दौड़ की योजना बनाएँ",
-  "Repeat weekly": "हर हफ़्ते दोहराएँ",
+  "Add a ride": "साइकिलिंग जोड़ें",
+  "Add a run": "दौड़ जोड़ें",
+  "Every {0}": "हर {0}",
+  "Remove from weekly plan": "साप्ताहिक योजना से हटाएँ",
+  "Skip {0}": "{0} छोड़ें",
+  "Skipped": "छोड़ा गया",
+  "Weekly session": "साप्ताहिक सत्र",
 }

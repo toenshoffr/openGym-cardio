@@ -3755,5 +3755,11 @@ export default {
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "내 Garmin API 키를 사용해요. 서버가 키를 보관하고 대신 가져와요.",
   "Plan a ride": "자전거 계획",
   "Plan a run": "달리기 계획",
-  "Repeat weekly": "매주 반복",
+  "Add a ride": "자전거 추가",
+  "Add a run": "달리기 추가",
+  "Every {0}": "매주 {0}",
+  "Remove from weekly plan": "주간 계획에서 삭제",
+  "Skip {0}": "{0} 건너뛰기",
+  "Skipped": "건너뜀",
+  "Weekly session": "주간 세션",
 }

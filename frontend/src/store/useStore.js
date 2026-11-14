@@ -116,6 +116,9 @@ export const DEF = {
   // Cardio (lib/cardio.js): runs and rides, planned or imported from a GPX, TCX or FIT file,
   // { [id]: session }, merged per session like programmes.
   cardio: {},
+  // The weekly cardio rhythm of the Plan screen, { [id]: { id, wd, sport, title, plan, from } },
+  // merged per slot (lib/cardio.js).
+  cardioWeek: {},
   exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full',
   // Stats activity heatmap metric. Profiles without this key continue to open on time.
   heatmapMetric: 'time',

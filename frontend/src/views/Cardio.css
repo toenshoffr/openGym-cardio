@@ -39,4 +39,3 @@
 .cardio-tr.fast .cardio-barwrap i { background: var(--green); }
 .cardio-tr.slow .cardio-barwrap i { background: var(--orange); }
 .cardio-bests .row + .row { border-top: var(--hair) solid var(--sep-op); padding-top: 8px; margin-top: 8px; }
-.cardio-repeat { display: grid; gap: 6px; margin-top: 12px; }

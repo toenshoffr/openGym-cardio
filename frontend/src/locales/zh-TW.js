@@ -3748,5 +3748,11 @@ export default {
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "使用你自己的 Garmin API 金鑰。你的伺服器保存金鑰並替你取得資料。",
   "Plan a ride": "計畫一次騎車",
   "Plan a run": "計畫一次跑步",
-  "Repeat weekly": "每週重複",
+  "Add a ride": "新增騎車",
+  "Add a run": "新增跑步",
+  "Every {0}": "每{0}",
+  "Remove from weekly plan": "從每週計畫中移除",
+  "Skip {0}": "略過 {0}",
+  "Skipped": "已略過",
+  "Weekly session": "每週訓練",
 }

@@ -30,7 +30,7 @@ import { WrappedHomeCard } from '../components/WrappedEntry.jsx'
 import RecoveryHint from '../components/RecoveryHint.jsx'
 import { ChallengesCard } from '../components/Challenges.jsx'
 import { isOn } from '../lib/modules.js'
-import { cardioList, cardioOnDay, fmtKm, fmtClock } from '../lib/cardio.js'
+import { planFor, fmtKm, fmtClock } from '../lib/cardio.js'
 
 // Home = what to do now + a quick glance. Deep charts & history live in Stats.
 export default function Home() {
@@ -73,10 +73,14 @@ export default function Home() {
   const coveredToday = id => !queueIds.includes(id) && loggedToday.some(w => (Array.isArray(w.routineIds) ? w.routineIds : [w.routineId]).includes(id))
   const doneToday = (todayRoutines.every(r => coveredToday(r.id)) && loggedToday.at(-1)) || null
   const cardioMod = isOn(S, 'cardio')
-  const cardioByDay = {}
-  if (cardioMod) for (const x of cardioList(S)) (cardioByDay[x.date] ||= {})[x.status === 'done' ? 'done' : 'planned'] = true
+  // What the weekly slots and the dated plans put on a day (planFor), done sessions included.
+  const cardioOf = iso => {
+    if (!cardioMod) return null
+    const xs = planFor(S, iso)
+    return xs.length ? { planned: xs.some(x => x.status === 'planned'), done: xs.some(x => x.status === 'done') } : null
+  }
   // Today's runs and rides, planned and done, under the week strip.
-  const cardioToday = cardioMod ? cardioOnDay(S, todayISO()) : []
+  const cardioToday = cardioMod ? planFor(S, todayISO()) : []
   const strip = []
   for (let i = 0; i < 7; i++) {
     const d = new Date(wkStart); d.setDate(wkStart.getDate() + i)
@@ -84,7 +88,7 @@ export default function Home() {
     const eff = effectiveRoutineIds(S, iso).length > 0, ovr = S.dayPlan[iso] !== undefined
     // Cardio (lib/cardio.js) rides on the same dots: a planned run or ride marks the day in blue,
     // a finished one counts as done, a routine's own state wins when the day has both.
-    const cardio = cardioMod ? cardioByDay[iso] : null
+    const cardio = cardioOf(iso)
     const done = doneDays.has(iso) || !!cardio?.done
     // A day off with a note (#261) reads as excused, not as a plan that went by.
     const dot = done ? ' done' : dayNoteOf(S, iso) ? ' noted' : ovr && eff ? ' ovr' : eff ? ' plan' : cardio?.planned ? ' cardio' : ''
@@ -187,7 +191,7 @@ export default function Home() {
           : routine ? <span className="row" style={{ gap: 8 }}><MiniBodyMap routines={todayRoutines} body={S.body} /><span className="tag acc">{t('Start')}</span></span>
           : <Icon name="plus" className="chev" />}
       </div>
-      {cardioToday.map(x => <div key={x.id} className="today-row cardio-today" {...tappable(() => nav('/cardio/' + x.id))}>
+      {cardioToday.map(x => <div key={x.id} className="today-row cardio-today" {...tappable(() => nav('/cardio/' + encodeURIComponent(x.id)))}>
         <div className="row" style={{ gap: 9, minWidth: 0 }}>
           <span className="lrow-i" style={{ background: x.status === 'done' ? 'var(--surface-3)' : 'var(--blue)' }}>
             <Icon name={x.status === 'done' ? 'checkCircle' : x.sport === 'bike' ? 'bike' : 'figureRun'} style={x.status === 'done' ? { color: 'var(--green)' } : undefined} />

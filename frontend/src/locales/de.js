@@ -3775,5 +3775,11 @@ export default {
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "Nutzt deinen eigenen Garmin-API-Schlüssel. Dein Server bewahrt ihn auf und holt die Daten für dich.",
   "Plan a ride": "Radfahrt planen",
   "Plan a run": "Lauf planen",
-  "Repeat weekly": "Wöchentlich wiederholen",
+  "Add a ride": "Radfahrt hinzufügen",
+  "Add a run": "Lauf hinzufügen",
+  "Every {0}": "Jeden {0}",
+  "Remove from weekly plan": "Aus dem Wochenplan entfernen",
+  "Skip {0}": "{0} überspringen",
+  "Skipped": "Übersprungen",
+  "Weekly session": "Wöchentliche Einheit",
 }

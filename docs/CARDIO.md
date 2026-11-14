@@ -24,15 +24,26 @@ A zip itself is refused with a message (openGym reads no zip but its own backups
 
 ## Planning and importing
 
-**On Home**, tap a day of the week strip: under **Cardio** the sheet lists that day's runs and rides and
-has **Plan a run** and **Plan a ride** for exactly that day, above your routines. A day with a planned
-run or ride gets a blue dot (a routine's own dot wins when the day has both; a finished one turns the
-dot green), and today's sessions get a row under the strip that opens them, with **Import** while
-they are still to do. The same sheet is on the Cardio screen.
+**A weekly rhythm, in the Plan screen.** Plan → Schedule → tap a weekday: under **Cardio** the sheet has
+**Add a run** and **Add a ride** for that weekday, and lists the ones already there. A weekly session is
+"every Tuesday, 8 km, 40 minutes, Tempo" and keeps coming until you remove it. The weekday's row in
+the Schedule shows it next to the routines (a day with only cardio is not a rest day). Changing a
+weekly session changes every day from now on; days already done keep what they are.
 
-1. **Plan** a session: run or ride, the day, optionally a distance, a time, a title and a note, and
-   **Repeat weekly** (1×, 4×, 8× or 12×) for a standing slot such as "Tuesday tempo run". Every week
-   becomes a session of its own that you can change or delete alone.
+Weekly sessions are not a pile of sessions made ahead: they show on each matching day, from the day you
+added them, and only become a real session on the day you import into them or skip them. **Skip** (in
+the weekly session's sheet, opened from that day on Home or on the Cardio screen) drops just that one day,
+which is how you take a week off; **Remove from weekly plan** ends the rhythm.
+
+**On Home**, the week strip shows the plan: a day with a planned run or ride has a blue dot (a routine's
+own dot wins when the day has both; a finished one turns the dot green), and today's sessions get a row
+under the strip that opens them, with **Import** while they are still to do. Tap a day for its sheet: under
+**Cardio** it lists that day's runs and rides, weekly ones included, and has **Plan a run** and **Plan a
+ride** for a one-off on exactly that day, above your routines. The same one-off form is on the Cardio
+screen.
+
+1. **Plan** a session, weekly in Plan or once as above: run or ride, optionally a distance, a time, a title
+   and a note.
 2. Do it.
 3. Either **Import from Strava or Garmin** at the top and pick one or several files, or press
    **Import** on the planned session itself.
@@ -105,7 +116,7 @@ check; if it says Garmin "answered, but not with a token openGym can read", the 
 
 ## How it is stored
 
-`S.cardio` is a map from an id to a session, and syncs one session at a time like programmes
+`S.cardio` is a map from an id to a session, and `S.cardioWeek` the weekly slots (one entry each: weekday, sport, plan and the day it started); both sync one entry at a time like programmes
 ([sync](ARCHITECTURE.md)): a ride planned on the laptop and a run imported on the phone both
 survive. Only a summary is kept of each file: totals, the kilometre splits, the laps, the best
 efforts and about 150 points for the route and the chart (about 4 KB), not every trackpoint, so

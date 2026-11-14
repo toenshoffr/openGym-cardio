@@ -7,7 +7,7 @@
 // `code` is a CardioError's (cardio-error.js) or 'read' for a file the browser could not open.
 import { parseActivity } from './cardio-parse.js'
 import { analyze } from './cardio-analyze.js'
-import { addDone, findDuplicate, suggestMatch } from './cardio.js'
+import { addDone, findDuplicate, planOf, suggestMatch } from './cardio.js'
 
 /**
  * @param {File[]} files        anything with `name` and `arrayBuffer()`
@@ -28,7 +28,7 @@ export async function importActivityFiles(files, getS, update, { matchId = null 
     }
     if (findDuplicate(getS(), a)) { results.push({ name, status: 'duplicate' }); continue }
     // An explicit pick only counts while that session is still planned; otherwise the file finds its own.
-    const picked = matchId && getS().cardio?.[matchId]?.status === 'planned' ? getS().cardio[matchId] : null
+    const picked = matchId && planOf(getS(), matchId)?.status === 'planned' ? planOf(getS(), matchId) : null
     const match = picked || suggestMatch(getS(), a)
     let id = null
     update(s => { id = addDone(s, a, { matchId: match?.id || null }) })

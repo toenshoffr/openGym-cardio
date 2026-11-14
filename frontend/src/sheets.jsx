@@ -101,8 +101,8 @@ import { copyText } from './lib/clipboard.js'
 import { queueRemaining, pinState } from './lib/queue.js'
 import { DAY_NOTE_TAGS, DAY_NOTE_LABEL, DAY_NOTE_ICON, dayNoteOf, dayNoteLine, canNoteDay, withDayNote } from './lib/day-notes.js'
 import { isOn } from './lib/modules.js'
-import { cardioOnDay, fmtKm, fmtClock } from './lib/cardio.js'
-import { cardioPlanSheet } from './components/CardioPlanSheet.jsx'
+import { cardioOnDay, slotsOnWeekday, fmtKm, fmtClock } from './lib/cardio.js'
+import { cardioPlanSheet, cardioSlotSheet, openPlanned } from './components/CardioPlanSheet.jsx'
 
 const S = () => useStore.getState().S
 const update = (...a) => useStore.getState().update(...a)
@@ -2935,7 +2935,7 @@ function DayOverride({ iso, close }) {
     {cardioOn && <>
       <h4 className="sec" style={{ marginTop: 0 }}>{t('Cardio')}</h4>
       <div className="list" style={{ marginBottom: 14 }}>
-        {cardioToday.map(x => <div key={x.id} className="item" {...tappable(() => { close(); x.status === 'done' ? nav('/cardio/' + x.id) : cardioPlanSheet(x.id) })}>
+        {cardioToday.map(x => <div key={x.id} className="item" {...tappable(() => { close(); x.status === 'done' ? nav('/cardio/' + encodeURIComponent(x.id)) : openPlanned(x) })}>
           <span className="lrow-i"><Icon name={x.sport === 'bike' ? 'bike' : 'figureRun'} /></span>
           <div className="grow"><div className="tt">{x.title || (x.sport === 'bike' ? t('Ride') : t('Run'))}</div>
             <div className="ss">{x.status === 'done' ? fmtKm(x.distM) + ' ' + t('km') + ' · ' + fmtClock(x.movingSec) : (x.plan?.distM ? fmtKm(x.plan.distM) + ' ' + t('km') : t('Planned'))}</div></div>
@@ -2998,6 +2998,8 @@ export const dayNoteSheet = iso => ui().openSheet(close => <DayNote iso={iso} cl
 // for a second pick, so "Done" closes it. The weekday never stores [] (the key goes instead).
 function DayAssign({ day, close }) {
   const st = useStore(s => s.S)
+  // The weekly cardio of this weekday (lib/cardio.js): a run or a ride that comes every week.
+  const slots = isOn(st, 'cardio') ? slotsOnWeekday(st, day) : []
   const cur = [].concat(st.week[day] || [])
   const toggle = id => update(s => {
     const ids = [].concat(s.week[day] || [])
@@ -3008,8 +3010,22 @@ function DayAssign({ day, close }) {
   return <>
     <h3 style={{ marginBottom: 2 }}>{t(DAYN[day])}</h3>
     <div className="muted small" style={{ marginBottom: 10 }}>{t('Pick one routine, or more to train them together.')}</div>
+    {isOn(st, 'cardio') && <>
+      <h4 className="sec" style={{ marginTop: 0 }}>{t('Cardio')}</h4>
+      <div className="list menu-list" style={{ marginBottom: 14 }}>
+        {slots.map(x => <div key={x.id} className="item menu-item" {...tappable(() => cardioSlotSheet({ id: x.id }))}>
+          <span className="lrow-i"><Icon name={x.sport === 'bike' ? 'bike' : 'figureRun'} /></span>
+          <div className="grow"><div className="tt">{x.title || (x.sport === 'bike' ? t('Ride') : t('Run'))}</div>
+            <div className="ss">{[x.plan?.distM ? fmtKm(x.plan.distM) + ' ' + t('km') : null, x.plan?.sec ? fmtClock(x.plan.sec) : null].filter(Boolean).join(' · ') || t('Every {0}', t(DAYN[day]))}</div></div>
+          <Icon name="pencil" className="chev" />
+        </div>)}
+        <div className="item menu-item" {...tappable(() => cardioSlotSheet({ wd: day, sport: 'run' }))}><span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="figureRun" /></span><div className="grow"><div className="tt">{t('Add a run')}</div></div><Icon name="plus" className="chev" /></div>
+        <div className="item menu-item" {...tappable(() => cardioSlotSheet({ wd: day, sport: 'bike' }))}><span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="bike" /></span><div className="grow"><div className="tt">{t('Add a ride')}</div></div><Icon name="plus" className="chev" /></div>
+      </div>
+      <h4 className="sec" style={{ marginTop: 0 }}>{t('Strength')}</h4>
+    </>}
     <div className="list menu-list">
-      <div className="item menu-item" {...tappable(rest)}><span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="moon" /></span><div className="grow"><div className="tt">{t('Rest day')}</div></div><span className={'menu-on' + (!cur.length ? ' is-on' : '')}><Icon name="check" /></span></div>
+      <div className="item menu-item" {...tappable(rest)}><span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="moon" /></span><div className="grow"><div className="tt">{t('Rest day')}</div></div><span className={'menu-on' + (!cur.length && !slots.length ? ' is-on' : '')}><Icon name="check" /></span></div>
       {st.routines.map(r => {
         const on = cur.includes(r.id)
         return <div key={r.id} className="item menu-item" aria-pressed={on} {...tappable(() => toggle(r.id))}>

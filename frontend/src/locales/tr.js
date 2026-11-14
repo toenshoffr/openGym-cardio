@@ -3755,5 +3755,11 @@ export default {
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "Kendi Garmin API anahtarını kullanır. Sunucun onu saklar ve verileri senin için çeker.",
   "Plan a ride": "Bisiklet sürüşü planla",
   "Plan a run": "Koşu planla",
-  "Repeat weekly": "Her hafta tekrarla",
+  "Add a ride": "Bisiklet sürüşü ekle",
+  "Add a run": "Koşu ekle",
+  "Every {0}": "Her {0}",
+  "Remove from weekly plan": "Haftalık plandan kaldır",
+  "Skip {0}": "{0} gününü atla",
+  "Skipped": "Atlandı",
+  "Weekly session": "Haftalık antrenman",
 }

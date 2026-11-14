@@ -7,7 +7,7 @@ import { createRoot } from 'react-dom/client'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { dayOverrideSheet } from './sheets.jsx'
-import { addPlanned, addDone, cardioList } from './lib/cardio.js'
+import { addPlanned, addDone, cardioList, addSlot, planFor } from './lib/cardio.js'
 import { analyze } from './lib/cardio-analyze.js'
 import { parseGpx } from './lib/cardio-parse.js'
 import { makeTrack, gpxOf } from './lib/cardio-fixtures.js'
@@ -27,7 +27,7 @@ function renderTop() {
 }
 const row = (host, name) => [...host.querySelectorAll('.item')].find(el => el.querySelector('.tt')?.textContent === name)
 const headings = host => [...host.querySelectorAll('h4.sec')].map(h => h.textContent)
-const setS = fn => useStore.setState(s => { const S = clone(s.S); S.routines = [{ id: 'r', name: 'Push', emoji: null, ex: [{ id: '0025' }] }]; S.week = {}; S.dayPlan = {}; S.workouts = []; S.active = null; S.queue = null; S.cardio = {}; delete S.modules; fn?.(S); return { S, user: null } })
+const setS = fn => useStore.setState(s => { const S = clone(s.S); S.routines = [{ id: 'r', name: 'Push', emoji: null, ex: [{ id: '0025' }] }]; S.week = {}; S.dayPlan = {}; S.workouts = []; S.active = null; S.queue = null; S.cardio = {}; S.cardioWeek = {}; delete S.modules; fn?.(S); return { S, user: null } })
 
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -60,15 +60,21 @@ describe('the day sheet with Cardio', () => {
     expect(x).toMatchObject({ sport: 'bike', date: ISO, status: 'planned' })
   })
 
-  it('repeat weekly plans the same session on the following weeks', () => {
-    setS()
+  it('a weekly slot shows on its weekday, a tap opens it, Skip drops just that day', () => {
+    let slot
+    setS(S => { slot = addSlot(S, { wd: 3, sport: 'run', title: 'Tempo', distM: 8000, from: '2026-11-01' }) })
+    // 2026-11-18 is a Wednesday (wd 3).
     dayOverrideSheet(ISO)
     const day = renderTop()
-    act(() => row(day, 'Plan a run').click())
-    const host = renderTop()
-    act(() => [...host.querySelectorAll('button')].find(b => b.textContent === '4×').click())
-    act(() => [...host.querySelectorAll('button')].find(b => b.textContent === 'Save').click())
-    expect(cardioList(useStore.getState().S).map(x => x.date).sort()).toEqual(['2026-11-18', '2026-11-25', '2026-12-02', '2026-12-09'])
+    expect(row(day, 'Tempo').querySelector('.ss').textContent).toBe('8 km')
+    act(() => row(day, 'Tempo').click())
+    const form = renderTop()
+    expect(form.querySelector('h3').textContent).toBe('Weekly session')
+    expect(form.textContent).toContain('Every Wednesday')
+    act(() => [...form.querySelectorAll('button')].find(b => b.textContent.startsWith('Skip')).click())
+    expect(planFor(useStore.getState().S, ISO)).toEqual([])
+    expect(planFor(useStore.getState().S, '2026-11-25')).toHaveLength(1)
+    expect(useStore.getState().S.cardioWeek[slot]).toBeTruthy()
   })
 
   it('lists what is planned or done that day, and not other days', () => {

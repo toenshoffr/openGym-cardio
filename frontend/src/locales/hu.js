@@ -3758,5 +3758,11 @@ export default {
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "A saját Garmin API-kulcsodat használja. A szervered tárolja, és helyetted tölti le az adatokat.",
   "Plan a ride": "Bringázás tervezése",
   "Plan a run": "Futás tervezése",
-  "Repeat weekly": "Ismétlés hetente",
+  "Add a ride": "Bringázás hozzáadása",
+  "Add a run": "Futás hozzáadása",
+  "Every {0}": "Minden {0}",
+  "Remove from weekly plan": "Eltávolítás a heti tervből",
+  "Skip {0}": "{0} kihagyása",
+  "Skipped": "Kihagyva",
+  "Weekly session": "Heti edzés",
 }

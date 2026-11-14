@@ -2544,7 +2544,13 @@ export const PT_BR_OVERRIDES = {
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "Usa a sua própria chave de API da Garmin. Seu servidor guarda a chave e busca os dados para você.",
   "Plan a ride": "Planejar um pedal",
   "Plan a run": "Planejar uma corrida",
-  "Repeat weekly": "Repetir toda semana",
+  "Add a ride": "Adicionar um pedal",
+  "Add a run": "Adicionar uma corrida",
+  "Every {0}": "Cada {0}",
+  "Remove from weekly plan": "Remover do plano semanal",
+  "Skip {0}": "Pular {0}",
+  "Skipped": "Pulada",
+  "Weekly session": "Sessão semanal",
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

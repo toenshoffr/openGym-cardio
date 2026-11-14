@@ -3755,5 +3755,11 @@ export default {
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "使用你自己的 Garmin API 密钥。你的服务器保存密钥并替你获取数据。",
   "Plan a ride": "计划一次骑行",
   "Plan a run": "计划一次跑步",
-  "Repeat weekly": "每周重复",
+  "Add a ride": "添加骑行",
+  "Add a run": "添加跑步",
+  "Every {0}": "每{0}",
+  "Remove from weekly plan": "从每周计划中移除",
+  "Skip {0}": "跳过 {0}",
+  "Skipped": "已跳过",
+  "Weekly session": "每周训练",
 }

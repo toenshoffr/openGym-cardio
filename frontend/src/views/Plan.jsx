@@ -31,6 +31,7 @@ import {
   chooseRotation, chooseFixedWeek, sequenceOf, isSimpleSequence, segmentAt, REST,
 } from '../lib/rotation.js'
 import { isOn } from '../lib/modules.js'
+import { slotsOnWeekday, fmtKm, fmtClock } from '../lib/cardio.js'
 
 // Plan has two views (v1.3.11): Schedule (how you train, and when) and Routines (what you
 // train). The last one you looked at comes back: a per-device convenience, never synced, so it
@@ -283,13 +284,21 @@ function Schedule({ S, update, nav, mode }) {
   const dayRoutines = d => [].concat(S.week[d] || []).map(routineOf).filter(Boolean)
   // One weekday: what is on it at a glance, and a tap to change it (dayAssignSheet picks one
   // routine, several for a combined day, or a rest day).
+  // The weekly cardio of a weekday (lib/cardio.js, S.cardioWeek): a run or a ride that comes every
+  // week, shown with the routines. A day with only cardio is no rest day.
+  const cardioOf = d => (isOn(S, 'cardio') ? slotsOnWeekday(S, d) : [])
+  const cardioName = x => x.title || (x.sport === 'bike' ? t('Ride') : t('Run'))
+  const cardioLine = x => [cardioName(x), x.plan?.distM ? fmtKm(x.plan.distM) + ' ' + t('km') : null, x.plan?.sec ? fmtClock(x.plan.sec) : null].filter(Boolean).join(' · ')
   const dayRow = (d, rs = dayRoutines(d)) => {
+    const cs = cardioOf(d)
+    const sub = (rs.length === 1 ? exCount(rs[0].ex.length) : rs.length ? routineCount(rs.length) : '')
     return <div key={d} className="item plan-day" data-day={d} aria-label={t(DAYN[d])} {...tappable(() => dayAssignSheet(d))}>
       <span className={'plan-day-n' + (d === todayDow ? ' today' : '')} aria-hidden="true">{t(DAYS[d])}</span>
-      <span className={'lrow-i' + (rs.length ? '' : ' rest')}><Icon name={rs.length ? glyphOf(rs[0].emoji) : 'moon'} /></span>
+      <span className={'lrow-i' + (rs.length || cs.length ? '' : ' rest')} style={!rs.length && cs.length ? { background: 'var(--blue)', color: '#fff' } : undefined}>
+        <Icon name={rs.length ? glyphOf(rs[0].emoji) : cs.length ? (cs[0].sport === 'bike' ? 'bike' : 'figureRun') : 'moon'} /></span>
       <div className="grow">
-        <div className="tt">{rs.length ? deriveSessionName(rs.map(r => r.name)) : t('Rest day')}</div>
-        <div className="ss">{rs.length === 1 ? exCount(rs[0].ex.length) : rs.length ? routineCount(rs.length) : t('Tap to plan something')}</div>
+        <div className="tt">{rs.length ? deriveSessionName(rs.map(r => r.name)) : cs.length ? cs.map(cardioName).join(' + ') : t('Rest day')}</div>
+        <div className="ss">{rs.length ? [sub, ...cs.map(cardioLine)].join(' · ') : cs.length ? cs.map(x => cardioLine(x)).join(' · ') : t('Tap to plan something')}</div>
       </div>
       {rs.length > 0 && <MiniBodyMap routines={rs} body={S.body} tour="plan-body" />}
       <Icon name="chevronRight" className="chev" />

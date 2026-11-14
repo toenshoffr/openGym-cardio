@@ -40,6 +40,39 @@ describe('cardio merges one session at a time', () => {
   })
 })
 
+describe('the weekly slots merge one at a time too', () => {
+  const slot = (id, wd, title) => ({ id, wd, sport: 'run', title, plan: { distM: 8000 }, from: '2026-11-01', _ts: 1 })
+  const withSlots = () => ({ ...base(), cardioWeek: { x: slot('x', 2, 'Tempo'), y: slot('y', 6, 'Long') } })
+
+  it('a slot edited on the phone and another added on the laptop both stay', () => {
+    const s0 = stampEdits(null, withSlots(), T)
+    const phone = edit(s0, T + 10, s => { s.cardioWeek.x = { ...s.cardioWeek.x, title: 'Tempo phone' } })
+    const desk = edit(s0, T + 20, s => { s.cardioWeek.z = slot('z', 4, 'Easy') })
+    for (const m of [mergeStates(phone, desk), mergeStates(desk, phone)]) {
+      expect(m.cardioWeek.x.title).toBe('Tempo phone')
+      expect(m.cardioWeek.y.title).toBe('Long')
+      expect(m.cardioWeek.z.title).toBe('Easy')
+    }
+  })
+
+  it('a removed slot stays removed, and a reset wipes them', () => {
+    const s0 = stampEdits(null, withSlots(), T)
+    const phone = edit(s0, T + 10, s => { delete s.cardioWeek.x })
+    const desk = edit(s0, T + 5, s => { s.cardioWeek.y.title = 'Long desk' })
+    for (const m of [mergeStates(phone, desk), mergeStates(desk, phone)]) expect(Object.keys(m.cardioWeek)).toEqual(['y'])
+    const ids = resetIdsOf(withSlots())
+    expect(ids.cardioWeek.sort()).toEqual(['x', 'y'])
+    expect(sinceReset(withSlots(), T + 1, ids).cardioWeek).toEqual({})
+  })
+
+  it('an older app that sends a document without them does not delete them', () => {
+    const cur = stampEdits(null, withSlots(), T)
+    const old = clone(cur)
+    delete old.cardioWeek
+    expect(stampPut(clone(cur), old, { overRead: true, stamped: false, now: T + 100 }).cardioWeek).toEqual(cur.cardioWeek)
+  })
+})
+
 describe('an older app that does not know them', () => {
   it('keeps them through the server when it sends a document without them', () => {
     const cur = stampEdits(null, base(), T)

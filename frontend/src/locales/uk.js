@@ -3752,5 +3752,11 @@ export default {
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "Використовує ваш власний ключ API Garmin. Сервер зберігає його й забирає дані за вас.",
   "Plan a ride": "Запланувати велопоїздку",
   "Plan a run": "Запланувати пробіжку",
-  "Repeat weekly": "Повторювати щотижня",
+  "Add a ride": "Додати велопоїздку",
+  "Add a run": "Додати пробіжку",
+  "Every {0}": "Щотижня: {0}",
+  "Remove from weekly plan": "Прибрати з тижневого плану",
+  "Skip {0}": "Пропустити {0}",
+  "Skipped": "Пропущено",
+  "Weekly session": "Щотижневе тренування",
 }

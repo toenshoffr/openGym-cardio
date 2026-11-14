@@ -3810,5 +3810,11 @@ export default {
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "يستخدم مفتاح Garmin API الخاص بك. يحتفظ به خادمك ويجلب البيانات نيابةً عنك.",
   "Plan a ride": "تخطيط ركوب دراجة",
   "Plan a run": "تخطيط جري",
-  "Repeat weekly": "كرّر أسبوعيًا",
+  "Add a ride": "إضافة ركوب دراجة",
+  "Add a run": "إضافة جري",
+  "Every {0}": "كل {0}",
+  "Remove from weekly plan": "إزالة من الخطة الأسبوعية",
+  "Skip {0}": "تخطّي {0}",
+  "Skipped": "تم التخطي",
+  "Weekly session": "جلسة أسبوعية",
 }

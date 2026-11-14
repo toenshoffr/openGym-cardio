@@ -4,7 +4,8 @@ import { parseGpx } from './cardio-parse.js'
 import { analyze } from './cardio-analyze.js'
 import {
   addPlanned, addDone, editSession, removeSession, suggestMatch, findDuplicate, cardioList,
-  fmtPace, fmtClock, fmtKm, speedLabel, weekStart, weekTotals, dayOf, addPlannedWeekly, cardioOnDay,
+  fmtPace, fmtClock, fmtKm, speedLabel, weekStart, weekTotals, dayOf, cardioOnDay,
+  addSlot, editSlot, removeSlot, slotsOnWeekday, planFor, planOf, materialize, virtualId, parseVirtual, upcoming,
 } from './cardio.js'
 import { insightsOf } from './cardio-insights.js'
 
@@ -105,27 +106,97 @@ describe('planning and importing', () => {
   })
 })
 
-describe('weekly plans', () => {
-  it('plans the same session once a week, over a month end and a clock change, 1 to 12 times', () => {
-    const s = { cardio: {} }
-    const ids = addPlannedWeekly(s, { sport: 'run', date: '2026-10-21', distM: 8000, title: 'Tempo' }, 4)
-    expect(ids).toHaveLength(4)
-    expect(ids.map(id => s.cardio[id].date)).toEqual(['2026-10-21', '2026-10-28', '2026-11-04', '2026-11-11'])
-    expect(new Set(ids.map(id => s.cardio[id].plan.distM))).toEqual(new Set([8000]))
-    expect(addPlannedWeekly({}, { sport: 'run', date: '2026-11-01' }, 99)).toHaveLength(12)
-    expect(addPlannedWeekly({}, { sport: 'run', date: '2026-11-01' }, 0)).toHaveLength(1)
-    expect(addPlannedWeekly({}, { sport: 'run', date: '2026-11-01' }, 'x')).toHaveLength(1)
+describe('the weekly plan', () => {
+  // 2026-11-10 is a Tuesday (wd 2).
+  const tuesday = '2026-11-10'
+  const base = () => { const s = { cardio: {}, cardioWeek: {} }; const slot = addSlot(s, { wd: 2, sport: 'run', title: 'Tempo', distM: 8000, sec: 2400, from: '2026-11-01' }); return { s, slot } }
+
+  it('a slot shows on every matching weekday from the day it was added, as a virtual planned session', () => {
+    const { s, slot } = base()
+    expect(slotsOnWeekday(s, 2).map(x => x.id)).toEqual([slot])
+    expect(slotsOnWeekday(s, 3)).toEqual([])
+    const [x] = planFor(s, tuesday)
+    expect(x).toMatchObject({ virtual: true, status: 'planned', sport: 'run', title: 'Tempo', date: tuesday, id: virtualId(slot, tuesday), plan: { distM: 8000, sec: 2400 } })
+    expect(planFor(s, '2026-11-17')).toHaveLength(1)
+    expect(planFor(s, '2026-10-27')).toEqual([])      // a Tuesday before `from`
+    expect(planFor(s, '2026-11-11')).toEqual([])      // a Wednesday
+    expect(cardioList(s)).toEqual([])                  // nothing real has been made
   })
 
-  it('cardioOnDay lists a day, planned first', () => {
-    const s = { cardio: {} }
+  it('parses and resolves a virtual id, and refuses one that does not hold', () => {
+    const { s, slot } = base()
+    expect(parseVirtual(virtualId(slot, tuesday))).toEqual({ slot, date: tuesday })
+    expect(parseVirtual('c123')).toBe(null)
+    expect(planOf(s, virtualId(slot, tuesday)).virtual).toBe(true)
+    expect(planOf(s, virtualId(slot, '2026-11-11'))).toBe(null)   // not that slot's weekday
+    expect(planOf(s, virtualId('nope', tuesday))).toBe(null)
+  })
+
+  it('editing the slot changes every future day, removing it clears them', () => {
+    const { s, slot } = base()
+    editSlot(s, slot, { sport: 'bike', plan: { distM: 30000, note: 'easy' } })
+    expect(planFor(s, tuesday)[0]).toMatchObject({ sport: 'bike', plan: { distM: 30000, sec: 2400, note: 'easy' } })
+    expect(removeSlot(s, slot)).toBe(true)
+    expect(planFor(s, tuesday)).toEqual([])
+  })
+
+  it('an import fills the slot day: one real session carrying the slot, and the day is covered', () => {
+    const { s, slot } = base()
+    const a = run([[8000, 300]], T(2026, 11, 10))
+    expect(suggestMatch(s, a)).toMatchObject({ virtual: true, slot })
+    const id = addDone(s, a, { matchId: suggestMatch(s, a).id })
+    expect(s.cardio[id]).toMatchObject({ status: 'done', slot, date: tuesday, plan: { distM: 8000 }, title: 'Tempo' })
+    expect(planFor(s, tuesday).map(x => [x.status, !!x.virtual])).toEqual([['done', false]])
+    expect(planFor(s, '2026-11-17')).toHaveLength(1)   // next week is untouched
+  })
+
+  it('a file finds the slot a day either side, and a real plan of the day wins the tie by distance', () => {
+    const { s } = base()
+    expect(suggestMatch(s, run([[8000, 300]], T(2026, 11, 11)))?.virtual).toBe(true)   // the Wednesday after
+    expect(suggestMatch(s, run([[8000, 300]], T(2026, 11, 13)))).toBe(null)            // three days off
+    const real = addPlanned(s, { sport: 'run', date: tuesday, distM: 8000 })
+    expect(suggestMatch(s, run([[8000, 300]], T(2026, 11, 10))).id).toBe(real)
+  })
+
+  it('materialize makes the day real once, and a real id is left alone', () => {
+    const { s, slot } = base()
+    const id = materialize(s, virtualId(slot, tuesday))
+    expect(s.cardio[id]).toMatchObject({ slot, status: 'planned', date: tuesday, plan: { distM: 8000 } })
+    expect(planFor(s, tuesday)).toHaveLength(1)
+    expect(planFor(s, tuesday)[0].virtual).toBeUndefined()
+    expect(materialize(s, id)).toBe(id)
+    expect(materialize(s, virtualId('nope', tuesday))).toBe(null)
+  })
+
+  it('removing one day skips only that day: a marker, never a reappearing slot', () => {
+    const { s, slot } = base()
+    removeSession(s, virtualId(slot, tuesday))
+    expect(planFor(s, tuesday)).toEqual([])
+    expect(cardioList(s)).toEqual([])
+    expect(planFor(s, '2026-11-17')).toHaveLength(1)
+    // A real day that came from the slot, deleted, is skipped too; a done one's data is dropped.
+    const a = run([[8000, 300]], T(2026, 11, 17))
+    const id = addDone(s, a, { matchId: suggestMatch(s, a).id })
+    expect(removeSession(s, id)).toBe(true)
+    expect(s.cardio[id]).toEqual(expect.objectContaining({ status: 'skipped', slot }))
+    expect(s.cardio[id].splits).toBeUndefined()
+    expect(planFor(s, '2026-11-17')).toEqual([])
+  })
+
+  it('upcoming: real planned sessions of any day and the slot days of the window, oldest first', () => {
+    const { s, slot } = base()
+    const open = addPlanned(s, { sport: 'bike', date: '2026-11-05' })
+    const list = upcoming(s, '2026-11-10', 14)
+    expect(list.map(x => x.date)).toEqual(['2026-11-05', '2026-11-10', '2026-11-17'])
+    expect(list[0].id).toBe(open)
+    expect(list.slice(1).every(x => x.virtual && x.slot === slot)).toBe(true)
+  })
+
+  it('cardioOnDay is planFor: planned first, then done', () => {
+    const { s } = base()
     addDone(s, run([[3000, 300]], T(2026, 11, 10)))
-    const p = addPlanned(s, { sport: 'bike', date: '2026-11-10' })
-    addPlanned(s, { sport: 'run', date: '2026-11-11' })
-    expect(cardioOnDay(s, '2026-11-10').map(x => x.status)).toEqual(['planned', 'done'])
-    expect(cardioOnDay(s, '2026-11-10')[0].id).toBe(p)
-    expect(cardioOnDay(s, '2026-12-01')).toEqual([])
-    expect(cardioOnDay({}, '2026-11-10')).toEqual([])
+    expect(cardioOnDay(s, tuesday).map(x => x.status)).toEqual(['planned', 'done'])
+    expect(cardioOnDay({}, tuesday)).toEqual([])
   })
 })
 

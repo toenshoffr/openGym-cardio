@@ -3802,5 +3802,11 @@ export default {
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "Använder din egen Garmin API-nyckel. Din server sparar den och hämtar data åt dig.",
   "Plan a ride": "Planera en cykeltur",
   "Plan a run": "Planera ett löppass",
-  "Repeat weekly": "Upprepa varje vecka",
+  "Add a ride": "Lägg till en cykeltur",
+  "Add a run": "Lägg till ett löppass",
+  "Every {0}": "Varje {0}",
+  "Remove from weekly plan": "Ta bort från veckoplanen",
+  "Skip {0}": "Hoppa över {0}",
+  "Skipped": "Överhoppad",
+  "Weekly session": "Veckopass",
 }

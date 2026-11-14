@@ -7,13 +7,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import Icon from '../components/Icon.jsx'
-import { cardioPlanSheet } from '../components/CardioPlanSheet.jsx'
+import { cardioPlanSheet, openPlanned } from '../components/CardioPlanSheet.jsx'
 import { Button } from '../components/ui.jsx'
 import { confirmSheet } from '../sheets.jsx'
 import { fmtDate, fmtNum, todayISO, isoOf } from '../lib/format.js'
 import { t, tn } from '../lib/i18n.js'
 import {
-  removeSession, cardioList, avgPace, speedLabel, fmtClock, fmtKm,
+  removeSession, cardioList, planOf, upcoming, avgPace, speedLabel, fmtClock, fmtKm,
   weekStart, weekTotals,
 } from '../lib/cardio.js'
 import { importActivityFiles } from '../lib/cardio-import.js'
@@ -147,7 +147,8 @@ export default function Cardio() {
   const matchRef = useRef(null)
   const today = todayISO()
   const all = cardioList(S)
-  const planned = all.filter(x => x.status === 'planned').sort((a, b) => a.date.localeCompare(b.date))
+  // Planned: one-offs of any day and the weekly slots' days of the next two weeks (lib/cardio.js).
+  const planned = upcoming(S, today, 14)
   const done = all.filter(x => x.status === 'done')
   const pick = matchId => { matchRef.current = matchId; fileRef.current?.click() }
   const onFiles = async ev => {
@@ -189,7 +190,7 @@ export default function Cardio() {
       <h4 className="sec" style={{ margin: 0 }}>{t('Planned')}</h4>
       <Button size="sm" variant="ghost" icon="plus" onClick={() => cardioPlanSheet(null, today)}>{t('Plan')}</Button>
     </div>
-    {planned.length ? <div className="list">{planned.map(x => <SessionRow key={x.id} x={x} onOpen={() => cardioPlanSheet(x.id)}>
+    {planned.length ? <div className="list">{planned.map(x => <SessionRow key={x.id} x={x} onOpen={() => openPlanned(x)}>
       <div className="cardio-act" onClick={e => e.stopPropagation()}>
         {x.date < today && <span className="tag">{t('Open')}</span>}
         <Button size="sm" icon="download" onClick={() => pick(x.id)} aria-label={t('Import into this session')}>{t('Import')}</Button>
@@ -335,7 +336,7 @@ export function CardioDetail() {
   const { id } = useParams()
   const nav = useNavigate()
   const S = useStore(s => s.S)
-  const x = S.cardio?.[id]
+  const x = planOf(S, id)
   const insights = useMemo(() => (x?.status === 'done' ? insightsOf(x, S) : []), [x, S])
   if (!x) return <div className="narrow"><div className="hdr">
     <button className="iconbtn" data-back="/cardio" onClick={() => nav('/cardio')} aria-label={t('Cardio')}><Icon name="chevronLeft" /></button>
@@ -349,7 +350,7 @@ export function CardioDetail() {
   const remove = () => confirmSheet({
     title: t('Delete this activity?'), message: t('Deletes {0} from {1}.', titleOf(x), fmtDate(x.date, true)),
     confirmText: t('Delete'), danger: true,
-    onConfirm: () => { update(s => { removeSession(s, id) }); toast(t('Deleted')); nav('/cardio', { replace: true }) },
+    onConfirm: () => { update(s => { removeSession(s, x.id) }); toast(t('Deleted')); nav('/cardio', { replace: true }) },
   })
   return <div className="narrow">
     <div className="hdr">
@@ -358,7 +359,7 @@ export function CardioDetail() {
         <h1 style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{titleOf(x)}</h1>
         <div className="sub">{fmtDate(x.date, true)}{done && x.start ? ' · ' + timeOfDay(x.start) : ''}</div>
       </div>
-      <button className="iconbtn" onClick={() => cardioPlanSheet(id)} aria-label={t('Edit')}><Icon name="pencil" /></button>
+      <button className="iconbtn" onClick={() => (done ? cardioPlanSheet(id) : openPlanned(x))} aria-label={t('Edit')}><Icon name="pencil" /></button>
       <button className="iconbtn" style={{ color: 'var(--red)' }} onClick={remove} aria-label={t('Delete')}><Icon name="trash" /></button>
     </div>
 
