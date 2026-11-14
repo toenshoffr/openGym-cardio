@@ -5,6 +5,9 @@ import { t, tn } from '../lib/i18n.js'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { Segmented } from './ui.jsx'
 import { dayNoteOf, dayNoteLine } from '../lib/day-notes.js'
+import { cardioByDay } from '../lib/cardio-stats.js'
+import { fmtKm } from '../lib/cardio.js'
+import { isOn } from '../lib/modules.js'
 
 const normalizeMetric = value => value === 'vol' ? 'vol' : 'time'
 
@@ -32,6 +35,15 @@ export default function Heatmap({ S, onDay, metric: selectedMetric, onMetricChan
     a.vol += sessionVolume(w, S)
     a.min += Math.max(0, Math.round(workoutDuration(w) / 60000))
   })
+  // Cardio (lib/cardio.js) trains too: a run or a ride makes its day count, shaded by its moving
+  // time. It has no volume, so on the Volume view a cardio-only day is the lightest shade.
+  if (isOn(S, 'cardio')) {
+    for (const [day, c] of Object.entries(cardioByDay(S))) {
+      const a = agg[day] = agg[day] || { n: 0, vol: 0, min: 0 }
+      a.c = c.n; a.m = c.m
+      a.min += Math.round(c.sec / 60)
+    }
+  }
   const values = Object.values(agg).map(a => a[metricValue]).filter(v => v > 0).sort((a, b) => a - b)
   const q = p => (values.length ? values[Math.min(values.length - 1, Math.floor(p * values.length))] : 0)
   const t1 = q(0.25), t2 = q(0.5), t3 = q(0.75)
@@ -65,7 +77,7 @@ export default function Heatmap({ S, onDay, metric: selectedMetric, onMetricChan
       const note = !a && dayNoteOf(S, key)
       const cls = 'hm-c l' + level(a) + (note ? ' noted' : '') + (key === todayISO() ? ' today' : '') + (day > today ? ' future' : '')
       cells.push(<div key={d} className={cls}
-        title={key + (a ? ` · ${tn('{0} workout', '{0} workouts', a.n)} · ${t('{0} min', a.min)} · ${fmtVol(a.vol, S.unit)}` : note ? ` · ${dayNoteLine(note, t)}` : '')}
+        title={key + (a ? (a.n ? ` · ${tn('{0} workout', '{0} workouts', a.n)}` : '') + (a.c ? ` · ${t('Cardio')} ${fmtKm(a.m)} ${t('km')}` : '') + ` · ${t('{0} min', a.min)}` + (a.n ? ` · ${fmtVol(a.vol, S.unit)}` : '') : note ? ` · ${dayNoteLine(note, t)}` : '')}
         {...tappable(a || note ? () => onDay?.(key) : undefined)} />)
     }
     cols.push(<div key={wk} className="hm-col">{cells}</div>)

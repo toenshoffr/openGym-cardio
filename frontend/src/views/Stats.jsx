@@ -7,7 +7,7 @@ import { lastBW, setLabel, modeOf, effortOf, entriesForExercise, metricEntriesFo
 import { fmtNum, fmtDate, fmtVol, fmtDur, todayISO, isoOf, weekKey, weekStartOf, exerciseNameText } from '../lib/format.js'
 import { entryTimes, exerciseTimeRows } from '../lib/exercise-time.js'
 import { speedUnitOf, speedLabel, toSpeed } from '../lib/speed.js'
-import { t, exerciseNameFor, exerciseNameClass, getLang } from '../lib/i18n.js'
+import { t, tn, exerciseNameFor, exerciseNameClass, getLang } from '../lib/i18n.js'
 import { bwSheet, goalSheet, calendarSheet, dayOverrideSheet, workoutDetailSheet, exerciseHistorySheet, WorkoutRow, bwDeltaColor, weighInsSheet } from '../sheets.jsx'
 import LineChart from '../components/LineChart.jsx'
 import WeightRate from '../components/WeightRate.jsx'
@@ -46,6 +46,8 @@ import { isWarmupRow } from '../lib/workout-model.js'
 import { exView, exUnitOf, shownWeight } from '../lib/ex-unit.js'
 import { isOn } from '../lib/modules.js'
 import { doneList } from '../lib/cardio.js'
+import CardioStats from '../components/CardioStats.jsx'
+import { trainingDays, sportSessions } from '../lib/cardio-stats.js'
 
 // Set 1 to 5 on the per-set chart — system colours, so each line keeps its hue in dark mode.
 const SET_COLORS = ['var(--blue)', 'var(--green)', 'var(--orange)', 'var(--purple)', 'var(--pink)']
@@ -588,6 +590,9 @@ export default function Stats() {
   const workouts = S.workouts
   const monthW = workouts.filter(w => workoutDay(w)?.slice(0, 7) === todayISO().slice(0, 7)).length
   const lifetime = lifetimeVolume(S)
+  // Days you trained in the last 12 months, strength or cardio (lib/cardio-stats.js).
+  const yearAgo = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 1); return isoOf(d) })()
+  const trainDays = trainingDays(on('cardio') ? S : { ...S, cardio: {} }, yearAgo, todayISO()).size
   // The streak with its best run, freezes and badges (lib/streak.js).
   const streak = streakInfo(S)
 
@@ -844,10 +849,14 @@ export default function Stats() {
   const timeCard = workouts.some(w => entryTimes(w).length)
   // With Effort off the time per exercise moves to the end of Lifts, so no part is a lone card.
   const hasEffortSect = effortCard || (effortOn && timeCard)
+  // Run and Ride parts (components/CardioStats.jsx): only with the Cardio module on and a done session of that sport.
+  const cardioSect = on('cardio') ? { run: sportSessions(S, 'run').length > 0, bike: sportSessions(S, 'bike').length > 0 } : {}
   const sections = [
     { value: 'overview', label: t('Overview') },
     ...(bodyOn ? [{ value: 'body', label: t('Body') }] : []),
     { value: 'lifts', label: t('Lifts') },
+    ...(cardioSect.run ? [{ value: 'run', label: t('Run') }] : []),
+    ...(cardioSect.bike ? [{ value: 'bike', label: t('Ride') }] : []),
     ...(hasEffortSect ? [{ value: 'effort', label: t('Effort') }] : []),
   ]
   const recent = [...workouts].reverse().slice(0, RECENT_ROWS)
@@ -909,8 +918,18 @@ export default function Stats() {
         S={S}
         metric={S.heatmapMetric === 'vol' ? 'vol' : 'time'}
         onMetricChange={metric => useStore.getState().update(s => { s.heatmapMetric = metric })}
-        onDay={iso => { const ws = workouts.filter(w => workoutDay(w) === iso); if (ws.length === 1) workoutDetailSheet(ws[0]); else if (ws.length) calendarSheet(iso); else dayOverrideSheet(iso) }}
+        onDay={iso => {
+          const ws = workouts.filter(w => workoutDay(w) === iso)
+          const cs = on('cardio') ? doneList(S).filter(x => x.date === iso) : []
+          if (ws.length === 1 && !cs.length) workoutDetailSheet(ws[0])
+          else if (!ws.length && cs.length === 1) nav('/cardio/' + encodeURIComponent(cs[0].id))
+          else if (ws.length || cs.length) calendarSheet(iso)
+          else dayOverrideSheet(iso)
+        }}
       />
+      {trainDays > 0 && <div className="small dim" style={{ marginTop: 8 }} data-training-days>
+        {tn('{0} training day in the last 12 months', '{0} training days in the last 12 months', trainDays)}
+      </div>}
     </div>
 
     {workouts.length > 0 && <>
@@ -1021,6 +1040,9 @@ export default function Stats() {
     {!effortOn && timeCard && <ExerciseTimeCard S={S} />}
     {!bodyOn && statsLinks}
     </section>
+
+    {cardioSect.run && <CardioStats S={S} sport="run" />}
+    {cardioSect.bike && <CardioStats S={S} sport="bike" />}
 
     {hasEffortSect && <section className="stats-sect" id="stats-effort" data-stats-sect="effort" aria-labelledby="stats-h-effort">
       <h2 className="stats-sect-h" id="stats-h-effort">{t('Effort')}</h2>

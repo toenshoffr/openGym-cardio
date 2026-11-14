@@ -2551,6 +2551,24 @@ export const PT_BR_OVERRIDES = {
   "Skip {0}": "Pular {0}",
   "Skipped": "Pulada",
   "Weekly session": "Sessão semanal",
+  // --- Cardio stats ---
+  "Active in {0} of the last 12 weeks": "Ativo em {0} das últimas 12 semanas",
+  "Activities": "Atividades",
+  "Average pace of each run, min/km": "Ritmo médio de cada corrida, min/km",
+  "Average speed of each ride": "Velocidade média de cada pedal",
+  "Best {0}": "Melhor {0}",
+  "Fastest average": "Média mais rápida",
+  "Last 12 weeks": "Últimas 12 semanas",
+  "Longest": "Mais longa",
+  "Most climb": "Maior ganho de elevação",
+  "Per month": "Por mês",
+  "Recent activities": "Atividades recentes",
+  "Year": "Ano",
+  "Years": "Anos",
+  "{0} distance compared with this time last year": "{0} de distância em relação ao mesmo ponto do ano passado",
+  "{0} distance compared with {1}": "{0} de distância em relação a {1}",
+  "{0} training day in the last 12 months": "{0} dia de treino nos últimos 12 meses",
+  "{0} training days in the last 12 months": "{0} dias de treino nos últimos 12 meses",
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

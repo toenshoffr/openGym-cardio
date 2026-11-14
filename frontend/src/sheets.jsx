@@ -101,7 +101,7 @@ import { copyText } from './lib/clipboard.js'
 import { queueRemaining, pinState } from './lib/queue.js'
 import { DAY_NOTE_TAGS, DAY_NOTE_LABEL, DAY_NOTE_ICON, dayNoteOf, dayNoteLine, canNoteDay, withDayNote } from './lib/day-notes.js'
 import { isOn } from './lib/modules.js'
-import { cardioOnDay, slotsOnWeekday, fmtKm, fmtClock } from './lib/cardio.js'
+import { cardioOnDay, slotsOnWeekday, doneList as cardioDone, planFor, fmtKm, fmtClock } from './lib/cardio.js'
 import { cardioPlanSheet, cardioSlotSheet, openPlanned } from './components/CardioPlanSheet.jsx'
 
 const S = () => useStore.getState().S
@@ -3408,6 +3408,10 @@ function Calendar({ start, close }) {
     const day = workoutDay(w)
     if (day) (byDay[day] = byDay[day] || []).push(w)
   })
+  // Cardio (lib/cardio.js) trains too: a done run or ride marks its day like a workout does.
+  const cardioMod = isOn(st, 'cardio')
+  const cDay = {}
+  if (cardioMod) cardioDone(st).forEach(x => { (cDay[x.date] = cDay[x.date] || []).push(x) })
   // Which column the 1st sits in, and therefore how many blanks come before it.
   const ws = weekStartOf(st)
   const startOffset = weekDayOffset(new Date(y, mo, 1).getDay(), ws)
@@ -3415,12 +3419,17 @@ function Calendar({ start, close }) {
   const monthWs = st.workouts.filter(w => workoutDay(w)?.startsWith(y + '-' + String(mo + 1).padStart(2, '0')))
   const monthVol = monthWs.reduce((a, w) => a + sessionVolume(w, st), 0)
   const monthMs = monthWs.reduce((a, w) => a + Math.max(0, (w.end || w.start) - w.start), 0)
+  const monthKey = y + '-' + String(mo + 1).padStart(2, '0')
+  const monthCardio = Object.entries(cDay).filter(([d]) => d.startsWith(monthKey)).flatMap(([, v]) => v)
+  const monthCardioM = monthCardio.reduce((a, x) => a + (x.distM || 0), 0)
   const cells = []
   for (let i = 0; i < startOffset; i++) cells.push(<div key={'e' + i} />)
   for (let d = 1; d <= daysIn; d++) {
     const iso = y + '-' + String(mo + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0')
     // A fulfilled pin (a coach session pinned here and since done) reads as no override, as it does everywhere else.
-    const ws = byDay[iso], planned = effectiveRoutineIds(st, iso).length > 0, ovr = st.dayPlan[iso] !== undefined && pinState(st, st.dayPlan[iso]) !== 'done'
+    const wsOnly = byDay[iso], cs = cDay[iso]
+    const ws = wsOnly || cs
+    const planned = effectiveRoutineIds(st, iso).length > 0 || (cardioMod && !ws && planFor(st, iso).some(x => x.status === 'planned')), ovr = st.dayPlan[iso] !== undefined && pinState(st, st.dayPlan[iso]) !== 'done'
     // A day off with a note on it (#261) shows the note's dot instead of the plan's, and its
     // note as the tooltip; tapping it opens the day sheet, where the note is.
     const note = !ws && dayNoteOf(st, iso)
@@ -3428,8 +3437,16 @@ function Calendar({ start, close }) {
     cells.push(<button key={d} className={'cal-d' + (ws ? ' has' : '') + (note ? ' noted' : '') + (iso === todayISO() ? ' today' : '')}
       title={note ? dayNoteLine(note, t) : undefined} onClick={() => {
       if (!ws) { close(); dayOverrideSheet(iso); return }
-      if (ws.length === 1) { close(); workoutDetailSheet(ws[0]); return }
-      close(); ui().openSheet(c2 => <><h3>{fmtDate(iso, true)}</h3><div className="list">{ws.map(w => <WorkoutRow key={w.id} w={w} onClick={() => { c2(); workoutDetailSheet(w) }} />)}</div></>)
+      if (wsOnly?.length === 1 && !cs) { close(); workoutDetailSheet(wsOnly[0]); return }
+      if (!wsOnly && cs.length === 1) { close(); nav('/cardio/' + encodeURIComponent(cs[0].id)); return }
+      close(); ui().openSheet(c2 => <><h3>{fmtDate(iso, true)}</h3><div className="list">
+        {(wsOnly || []).map(w => <WorkoutRow key={w.id} w={w} onClick={() => { c2(); workoutDetailSheet(w) }} />)}
+        {(cs || []).map(x => <div key={x.id} className="item" {...tappable(() => { c2(); nav('/cardio/' + encodeURIComponent(x.id)) })}>
+          <span className="lrow-i"><Icon name={x.sport === 'bike' ? 'bike' : 'figureRun'} /></span>
+          <div className="grow"><div className="tt">{x.title || (x.sport === 'bike' ? t('Ride') : t('Run'))}</div><div className="ss">{fmtKm(x.distM) + ' ' + t('km') + ' · ' + fmtClock(x.movingSec)}</div></div>
+          <Icon name="chevronRight" className="chev" />
+        </div>)}
+      </div></>)
     }}><span>{d}</span><i className={dotCls} /></button>)
   }
   return <>
@@ -3438,7 +3455,7 @@ function Calendar({ start, close }) {
       <h3 style={{ margin: 0 }}>{t(MONTHS_LONG[mo])} {y}</h3>
       <button className="iconbtn" onClick={() => setCur(new Date(y, mo + 1, 1))} aria-label={t('Next month')}><Icon name="chevronRight" /></button>
     </div>
-    <div className="small muted" style={{ textAlign: 'center' }}>{monthWs.length ? `${tn('{0} workout', '{0} workouts', monthWs.length)} · ${fmtDur(monthMs)} · ${fmtVol(monthVol, st.unit)}` : t('No workouts this month')}</div>
+    <div className="small muted" style={{ textAlign: 'center' }}>{monthWs.length ? `${tn('{0} workout', '{0} workouts', monthWs.length)} · ${fmtDur(monthMs)} · ${fmtVol(monthVol, st.unit)}` + (monthCardio.length ? ` · ${t('Cardio')} ${fmtKm(monthCardioM)} ${t('km')}` : '') : monthCardio.length ? `${t('Cardio')} · ${fmtKm(monthCardioM)} ${t('km')}` : t('No workouts this month')}</div>
     <div className="cal-grid">{weekOrder(ws).map(d => <div key={d} className="cal-h">{t(DAYS[d])}</div>)}{cells}</div>
     <div className="cal-legend">
       <span><i style={{ background: 'var(--acc)' }} />{t('Trained')}</span>

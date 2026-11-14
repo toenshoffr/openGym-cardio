@@ -1,0 +1,24 @@
+/* Stats → Run and Ride (components/CardioStats.jsx): bars, the year grid and the rows. Tokens only. */
+.cs-bars { display: flex; align-items: flex-end; gap: 4px; height: 96px; margin: 12px 0 4px; }
+.cs-col { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; gap: 4px; }
+.cs-bar { background: var(--surface-3); border-radius: 4px 4px 2px 2px; min-height: 2px; }
+.cs-col.now .cs-bar { background: var(--acc); }
+.cs-lbl { font-size: var(--fs-caption2); color: var(--label-2); text-align: center; line-height: 1; white-space: nowrap; overflow: hidden; }
+.cs-cap { margin-top: 6px; }
+.cs-sub { margin: 14px 0 0; }
+.cs-year-pick { min-width: 110px; }
+.cs-year-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 8px; margin-top: 12px; }
+.cs-v { font-size: var(--fs-callout); font-weight: 650; font-variant-numeric: tabular-nums; }
+.cs-delta { margin-top: 12px; color: var(--label-2); }
+.cs-delta.up { color: var(--green); }
+.cs-delta.down { color: var(--orange); }
+.cs-yh, .cs-yr { display: grid; grid-template-columns: 52px 1.3fr .9fr 1fr; gap: 8px; padding: 8px 0; font-size: var(--fs-subhead); font-variant-numeric: tabular-nums; align-items: center; }
+.cs-yh { color: var(--label-2); font-size: var(--fs-caption); padding-top: 0; }
+.cs-yh span:not(:first-child), .cs-yr span { text-align: end; }
+.cs-yr { cursor: pointer; border-top: var(--hair) solid var(--sep-op); }
+.cs-yr.on b { color: var(--acc-ink); }
+.cs-rec-row { display: flex; align-items: baseline; gap: 10px; padding: 9px 0; cursor: pointer; }
+.cs-rec-row + .cs-rec-row { border-top: var(--hair) solid var(--sep-op); }
+.cs-rec-row b { font-variant-numeric: tabular-nums; }
+/* Six-figure distances and long times must stay on one line in a third of the card. */
+[data-cardio-kpis] .tile .v, [data-cardio-kpis2] .tile .v { font-size: var(--fs-title3); white-space: nowrap; }

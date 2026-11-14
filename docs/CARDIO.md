@@ -75,6 +75,25 @@ the message tells how many were added, were already there or could not be read.
   route, the session against its plan, the longest so far, the week against your usual week.
 - **This week** and the last eight weeks on the list.
 
+## In Stats
+
+- **Training days.** The activity heatmap (Stats → Overview) and the calendar mark a day you trained
+  whether it was strength or cardio. A run or a ride shades its day by its moving time (on the Volume
+  view a cardio-only day is the lightest shade, as cardio has no volume), the tooltip says
+  "Cardio 8 km", and under the heatmap a line counts the days you trained in the last 12 months, each day
+  once however many sessions it held. A tap on a day opens the run or ride, or the calendar when the day
+  holds more than one thing. A planned run shows as planned in the calendar.
+- **Run and Ride** are parts of Stats like Lifts, with their own entries in the index at the top. A part
+  shows once there is a done session of that sport and Cardio is on. Each has:
+  all-time tiles (activities, distance, time, average pace or speed, climb, average heart rate);
+  **a year card**, with the year you pick (rows of the Years card, or the picker), that year's totals,
+  distance month by month and how it compares with this time last year (a past year: with the year
+  before it); the **last 12 weeks** of distance and in how many of them you were active; a **Years**
+  table; the **pace** (run) or **speed** (ride) of every session over time, faster up; **records**
+  (longest, most climb, fastest average over at least 3 km for a run and 10 km for a ride, and the best 1,
+  5, 10 km, half and full marathon found inside any session, each opening its session); and the five
+  latest activities.
+
 ## Garmin Connect sync
 
 Optional, and only on a server of your own. Garmin has a **Personal API** for exactly this: you
@@ -136,6 +155,7 @@ All of it is pure code in `frontend/src/lib/`, each file with a test beside it:
 | `cardio-fit.js` | The FIT reader (record, lap, session; compressed timestamps; developer fields skipped) |
 | `cardio-analyze.js` | Distance, moving time, kilometre splits, laps, best efforts, climb, the stored profile |
 | `cardio-insights.js` | `insightsOf(session, state)`: the observations, as ids and numbers |
+| `cardio-stats.js` | The numbers of Stats → Run and Ride: totals, years, months, weeks, year to date, records, trend, training days |
 | `cardio.js` | Planning, matching an import to a plan, duplicates, formatting, week totals |
 | `cardio-import.js` | A batch of picked files to sessions, one result per file |
 | `garmin-sync.js` | Garmin sync: list, skip what is here, download, hand each file to `cardio-import.js` |
@@ -143,5 +163,5 @@ All of it is pure code in `frontend/src/lib/`, each file with a test beside it:
 
 Server side, `api/integrations/providers/garmin.js` (a pull provider: the key, the token, the list, the file) and `api/integrations/zip.js` (Garmin's download is a deflated zip), reached through `POST /api/integrations/pull`.
 
-`views/Cardio.jsx` holds the screens. A new insight is an id in `cardio-insights.js` and its sentence in
+`views/Cardio.jsx` holds the screens, `components/CardioStats.jsx` the Run and Ride parts of Stats. A new insight is an id in `cardio-insights.js` and its sentence in
 `insightText`. `cardio` is in `PER_KEY` of both `lib/sync-merge.js` and `api/sync-stamps.js`.
