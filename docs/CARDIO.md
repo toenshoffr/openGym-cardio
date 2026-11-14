@@ -124,6 +124,12 @@ This was written without a Garmin key to try it against, so the first Test on a 
 check; if it says Garmin "answered, but not with a token openGym can read", the shape is the thing to fix
 (`tokenOf` and `get` in `api/integrations/providers/garmin.js`).
 
+**If Test says "Garmin answered NNN".** The message names the step it came from (token, list or file) and
+the first of what Garmin said, so it can be told apart: `406 at the token step` was a request asking for an
+`Accept` Garmin's token endpoint does not produce, which is why the token call now sends none of its own,
+like Garmin's curl example. A `401` is the key (expired, deleted or mistyped); `429` means wait a few
+minutes.
+
 ## What it does not do
 
 - **No Strava link.** Import its files instead. Garmin sync is the only live source.

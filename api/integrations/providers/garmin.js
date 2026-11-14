@@ -30,10 +30,19 @@ export const FILE_MAX = 30 * 1024 * 1024;
 // else (swimming, strength...) is left on Garmin.
 export const SPORT_KEYS = { run: /run|treadmill/i, bike: /cycl|bik|ride|mtb|gravel/i };
 
+/**
+ * The headers of a request: what curl sends in Garmin's own example (any Accept, a user agent),
+ * plus the caller's. A 406 from the token step was reported with a real key, so nothing narrower
+ * than `*` is ever asked for, and a POST says it has no body.
+ */
+export const requestHeaders = (method, headers = {}) => ({
+  'User-Agent': 'openGym', Accept: '*/*', ...headers, ...(method === 'POST' ? { 'Content-Length': 0 } : {}),
+});
+
 /** One request to the fixed host: { status, headers, body: Buffer }. Redirects are refusals. */
 export function makeTransport() {
   return (method, pathAndQuery, { headers = {}, max = 1_000_000 } = {}) => new Promise((resolve, reject) => {
-    const req = https.request({ host: HOST, path: pathAndQuery, method, headers: method === 'POST' ? { ...headers, 'Content-Length': 0 } : headers, timeout: TIMEOUT_MS }, res => {
+    const req = https.request({ host: HOST, path: pathAndQuery, method, headers: requestHeaders(method, headers), timeout: TIMEOUT_MS }, res => {
       const chunks = []; let n = 0;
       res.on('data', d => { n += d.length; if (n > max) { res.destroy(Object.assign(new Error('too big'), { code: 'ETOOBIG' })); return; } chunks.push(d); });
       res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) }));
@@ -48,7 +57,7 @@ export function makeTransport() {
 const fail = (status, code, message) => Object.assign(new Error(message), { status, code });
 
 /** What went wrong with a call, in words the app shows. */
-function explain(r, err) {
+function explain(r, err, step = '') {
   if (err) {
     if (err.code === 'ETIMEDOUT') return fail(504, 'timeout', 'Garmin did not answer within 20 seconds.');
     if (err.code === 'ETOOBIG') return fail(502, 'big', 'Garmin sent more than expected.');
@@ -58,7 +67,11 @@ function explain(r, err) {
   if (r.status === 401 || r.status === 403) return fail(401, 'key', 'Garmin refused the key. It may have expired or been deleted: make a new one on Garmin Connect.');
   if (r.status === 429) return fail(429, 'busy', 'Garmin says slow down. Try again in a few minutes.');
   if (r.status === 404) return fail(404, 'gone', 'Garmin has no such activity.');
-  return fail(502, 'garmin', `Garmin answered ${r.status}.`);
+  // Anything else: the status, the step it came from and the first of what Garmin said, so a report
+  // of "Garmin answered 406" can be told apart from the next one.
+  const said = Buffer.isBuffer(r.body) ? r.body.toString('utf8').replace(/\s+/g, ' ').trim().slice(0, 120) : '';
+  const printable = said && /^[\x20-\x7e\u00a0-\uffff]+$/.test(said) ? said : '';
+  return fail(502, 'garmin', `Garmin answered ${r.status}${step ? ' at the ' + step + ' step' : ''}${printable ? ': ' + printable : ''}.`);
 }
 
 /** The token out of the token endpoint's reply, whatever shape it has (see the file's header). */
@@ -82,11 +95,13 @@ export function garminProvider({ transport = null, now = Date.now } = {}) {
     try { r = await send(method, path, opts); } catch (e) { throw explain(null, e); }
     return r;
   }
+  const stepOf = path => (path.startsWith('/personalapitoken') ? 'token' : path.startsWith('/activitylist') ? 'list' : path.startsWith('/download') ? 'file' : '');
   async function token(connId, apiKey, force = false) {
     const have = tokens.get(connId);
     if (!force && have && now() - have.at < TOKEN_MS) return have.token;
-    const r = await call('POST', '/personalapitoken-service/personal-api/personal-api-key/token', { headers: { Authorization: `ApiKey ${apiKey}`, Accept: 'application/json' } });
-    if (r.status < 200 || r.status >= 300) throw explain(r);
+    // No Accept of our own, as in Garmin's example: the reply may be JSON or plain text.
+    const r = await call('POST', '/personalapitoken-service/personal-api/personal-api-key/token', { headers: { Authorization: `ApiKey ${apiKey}` } });
+    if (r.status < 200 || r.status >= 300) throw explain(r, null, 'token');
     const t = tokenOf(r.body);
     if (!t) throw fail(502, 'token', 'Garmin answered, but not with a token openGym can read.');
     tokens.set(connId, { token: t, at: now() });
@@ -96,9 +111,9 @@ export function garminProvider({ transport = null, now = Date.now } = {}) {
   async function get(connId, apiKey, path, max) {
     for (let again = 0; again < 2; again++) {
       const t = await token(connId, apiKey, again > 0);
-      const r = await call('GET', path, { headers: { Authorization: `Bearer ${t}`, Accept: '*/*' }, max });
+      const r = await call('GET', path, { headers: { Authorization: `Bearer ${t}` }, max });
       if ((r.status === 401 || r.status === 403) && again === 0) { tokens.delete(connId); continue; }
-      if (r.status < 200 || r.status >= 300) throw explain(r);
+      if (r.status < 200 || r.status >= 300) throw explain(r, null, stepOf(path));
       return r;
     }
     throw explain({ status: 401 });

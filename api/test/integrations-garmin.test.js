@@ -9,7 +9,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 
 const { firstEntry } = await import('../integrations/zip.js');
-const { garminProvider, tokenOf } = await import('../integrations/providers/garmin.js');
+const { garminProvider, tokenOf, requestHeaders } = await import('../integrations/providers/garmin.js');
 const { createIntegrations } = await import('../integrations/index.js');
 
 const SECRET = 'b'.repeat(64);
@@ -71,6 +71,32 @@ test('a zip: deflated or stored, the first activity file, nothing else', () => {
   assert.equal(firstEntry(zipOf([['a.fit', 'x'.repeat(5000)]]), /\.fit$/, 1000), null, 'declared bigger than the limit');
   const truncated = zipOf([['a.fit', 'hello']]).subarray(0, 40);
   assert.equal(firstEntry(truncated), null);
+});
+
+test('the headers are curl\'s: any Accept and a user agent, never a narrower Accept of our own', () => {
+  assert.deepEqual(requestHeaders('GET', { Authorization: 'Bearer x' }), { 'User-Agent': 'openGym', Accept: '*/*', Authorization: 'Bearer x' });
+  assert.deepEqual(requestHeaders('POST', { Authorization: 'ApiKey k' }), { 'User-Agent': 'openGym', Accept: '*/*', Authorization: 'ApiKey k', 'Content-Length': 0 });
+  assert.equal(requestHeaders('GET').Accept, '*/*');
+});
+
+test('the token step asks for no Accept of its own (a 406 was reported with a real key)', async () => {
+  const g = fakeGarmin();
+  let seen;
+  const p = garminProvider({ transport: async (m, path, o) => { if (path.startsWith('/personalapitoken')) seen = o.headers; return g.t(m, path, o); } });
+  await p.pull('list', {}, reveal, 'c1');
+  assert.equal(seen.Accept, undefined);
+  assert.equal(seen.Authorization, 'ApiKey GOOD-KEY-0123456789');
+});
+
+test('an answer nobody expected says its status, the step and what Garmin said', async () => {
+  const notAcceptable = garminProvider({ transport: async () => ({ status: 406, headers: {}, body: Buffer.from('Not Acceptable') }) });
+  await assert.rejects(notAcceptable.pull('list', {}, reveal, 'c1'), { code: 'garmin', message: 'Garmin answered 406 at the token step: Not Acceptable.' });
+  const atList = garminProvider({ transport: async (m, p) => (p.startsWith('/personalapitoken') ? { status: 200, headers: {}, body: Buffer.from('{"access_token":"tok-1"}') } : { status: 406, headers: {}, body: Buffer.from('{"error":"no acceptable representation"}') }) });
+  await assert.rejects(atList.pull('list', {}, reveal, 'c1'), { message: 'Garmin answered 406 at the list step: {"error":"no acceptable representation"}.' });
+  const atFile = garminProvider({ transport: async (m, p) => (p.startsWith('/download') ? { status: 500, headers: {}, body: Buffer.alloc(0) } : fakeGarmin().t(m, p, { headers: { Authorization: m === 'POST' ? 'ApiKey GOOD-KEY-0123456789' : 'Bearer tok-1' } })) });
+  await assert.rejects(atFile.pull('file', { activity: '1' }, reveal, 'c1'), { message: 'Garmin answered 500 at the file step.' });
+  const binary = garminProvider({ transport: async () => ({ status: 406, headers: {}, body: Buffer.from([0, 1, 2, 255]) }) });
+  await assert.rejects(binary.pull('list', {}, reveal, 'c1'), { message: 'Garmin answered 406 at the token step.' });
 });
 
 test('the token reply is read whatever shape it has', () => {
