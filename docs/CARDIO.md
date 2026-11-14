@@ -24,7 +24,15 @@ A zip itself is refused with a message (openGym reads no zip but its own backups
 
 ## Planning and importing
 
-1. **Plan** a session: run or ride, the day, and optionally a distance, a time, a title and a note.
+**On Home**, tap a day of the week strip: under **Cardio** the sheet lists that day's runs and rides and
+has **Plan a run** and **Plan a ride** for exactly that day, above your routines. A day with a planned
+run or ride gets a blue dot (a routine's own dot wins when the day has both; a finished one turns the
+dot green), and today's sessions get a row under the strip that opens them, with **Import** while
+they are still to do. The same sheet is on the Cardio screen.
+
+1. **Plan** a session: run or ride, the day, optionally a distance, a time, a title and a note, and
+   **Repeat weekly** (1×, 4×, 8× or 12×) for a standing slot such as "Tuesday tempo run". Every week
+   becomes a session of its own that you can change or delete alone.
 2. Do it.
 3. Either **Import from Strava or Garmin** at the top and pick one or several files, or press
    **Import** on the planned session itself.

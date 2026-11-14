@@ -2542,6 +2542,9 @@ export const PT_BR_OVERRIDES = {
   "Pull your runs and rides from Garmin with your own API key.": "Traga suas corridas e seus pedais da Garmin com a sua própria chave de API.",
   "Runs and rides, with the route, laps and a pace for every kilometre.": "Corridas e pedais, com percurso, voltas e o ritmo de cada quilômetro.",
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "Usa a sua própria chave de API da Garmin. Seu servidor guarda a chave e busca os dados para você.",
+  "Plan a ride": "Planejar um pedal",
+  "Plan a run": "Planejar uma corrida",
+  "Repeat weekly": "Repetir toda semana",
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

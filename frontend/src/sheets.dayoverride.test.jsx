@@ -40,7 +40,8 @@ const header = host => host.querySelector('.muted.small').textContent
 const heading = host => host.querySelector('h4.sec')?.textContent
 const lists = host => [...host.querySelectorAll('.list')].map(l => [...l.querySelectorAll('.item .tt')].map(e => e.textContent))
 const rowOf = (host, name) => [...host.querySelectorAll('.item')].find(el => el.querySelector('.tt')?.textContent === name)
-const setS = (over = {}) => useStore.setState(s => ({ S: { ...s.S, routines, week: {}, dayPlan: {}, workouts: [], active: null, queue, ...over }, user: null }))
+// Cardio is off here: these tests are about the routine lists, the Cardio block has its own file.
+const setS = (over = {}) => useStore.setState(s => ({ S: { ...s.S, routines, week: {}, dayPlan: {}, workouts: [], active: null, queue, modules: { cardio: false }, ...over }, user: null }))
 
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true

@@ -3832,4 +3832,7 @@ export default {
   "Pull your runs and rides from Garmin with your own API key.": "নিজের API কী দিয়ে Garmin থেকে আপনার দৌড় ও সাইকেল চালানো নিয়ে আসুন।",
   "Runs and rides, with the route, laps and a pace for every kilometre.": "দৌড় ও সাইকেল চালানো, পথ, ল্যাপ এবং প্রতি কিলোমিটারের পেস সহ।",
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "আপনার নিজের Garmin API কী ব্যবহার করে। আপনার সার্ভার এটি রাখে এবং আপনার জন্য তথ্য আনে।",
+  "Plan a ride": "সাইকেল চালানোর পরিকল্পনা করুন",
+  "Plan a run": "দৌড়ের পরিকল্পনা করুন",
+  "Repeat weekly": "প্রতি সপ্তাহে পুনরাবৃত্তি করুন",
 }

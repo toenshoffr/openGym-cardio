@@ -43,6 +43,20 @@ export function addPlanned(s, { sport, date, title = '', distM = null, sec = nul
   return id
 }
 
+/** The same session every week for `weeks` weeks from `date` (1 to 12): one planned session per week. Returns the ids. */
+export function addPlannedWeekly(s, spec, weeks = 1, now = Date.now()) {
+  const n = Math.max(1, Math.min(12, Math.round(weeks) || 1))
+  const ids = []
+  for (let i = 0; i < n; i++) {
+    const d = new Date(spec.date + 'T12:00:00'); d.setDate(d.getDate() + 7 * i)
+    ids.push(addPlanned(s, { ...spec, date: isoOf(d) }, now))
+  }
+  return ids
+}
+
+/** Everything on one calendar day, planned and done, planned first. */
+export const cardioOnDay = (S, iso) => cardioList(S).filter(x => x.date === iso).sort((a, b) => (a.status === 'planned' ? 0 : 1) - (b.status === 'planned' ? 0 : 1))
+
 /** Changes a planned session's own fields (sport, date, title, plan). A done one keeps its data. */
 export function editSession(s, id, patch, now = Date.now()) {
   const x = s.cardio?.[id]

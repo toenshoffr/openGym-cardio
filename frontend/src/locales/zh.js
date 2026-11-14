@@ -3753,4 +3753,7 @@ export default {
   "Pull your runs and rides from Garmin with your own API key.": "用你自己的 API 密钥从 Garmin 拉取跑步和骑行。",
   "Runs and rides, with the route, laps and a pace for every kilometre.": "跑步和骑行，包含路线、圈和每公里的配速。",
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "使用你自己的 Garmin API 密钥。你的服务器保存密钥并替你获取数据。",
+  "Plan a ride": "计划一次骑行",
+  "Plan a run": "计划一次跑步",
+  "Repeat weekly": "每周重复",
 }

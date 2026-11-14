@@ -30,6 +30,7 @@ import { WrappedHomeCard } from '../components/WrappedEntry.jsx'
 import RecoveryHint from '../components/RecoveryHint.jsx'
 import { ChallengesCard } from '../components/Challenges.jsx'
 import { isOn } from '../lib/modules.js'
+import { cardioList, cardioOnDay, fmtKm, fmtClock } from '../lib/cardio.js'
 
 // Home = what to do now + a quick glance. Deep charts & history live in Stats.
 export default function Home() {
@@ -71,13 +72,22 @@ export default function Home() {
   const queueIds = queueOf(S)?.ids || []
   const coveredToday = id => !queueIds.includes(id) && loggedToday.some(w => (Array.isArray(w.routineIds) ? w.routineIds : [w.routineId]).includes(id))
   const doneToday = (todayRoutines.every(r => coveredToday(r.id)) && loggedToday.at(-1)) || null
+  const cardioMod = isOn(S, 'cardio')
+  const cardioByDay = {}
+  if (cardioMod) for (const x of cardioList(S)) (cardioByDay[x.date] ||= {})[x.status === 'done' ? 'done' : 'planned'] = true
+  // Today's runs and rides, planned and done, under the week strip.
+  const cardioToday = cardioMod ? cardioOnDay(S, todayISO()) : []
   const strip = []
   for (let i = 0; i < 7; i++) {
     const d = new Date(wkStart); d.setDate(wkStart.getDate() + i)
     const iso = isoOf(d)
-    const eff = effectiveRoutineIds(S, iso).length > 0, ovr = S.dayPlan[iso] !== undefined, done = doneDays.has(iso)
+    const eff = effectiveRoutineIds(S, iso).length > 0, ovr = S.dayPlan[iso] !== undefined
+    // Cardio (lib/cardio.js) rides on the same dots: a planned run or ride marks the day in blue,
+    // a finished one counts as done, a routine's own state wins when the day has both.
+    const cardio = cardioMod ? cardioByDay[iso] : null
+    const done = doneDays.has(iso) || !!cardio?.done
     // A day off with a note (#261) reads as excused, not as a plan that went by.
-    const dot = done ? ' done' : dayNoteOf(S, iso) ? ' noted' : ovr && eff ? ' ovr' : eff ? ' plan' : ''
+    const dot = done ? ' done' : dayNoteOf(S, iso) ? ' noted' : ovr && eff ? ' ovr' : eff ? ' plan' : cardio?.planned ? ' cardio' : ''
     strip.push(<div key={i} className={'wday' + (iso === todayISO() ? ' today' : '')} {...tappable(() => dayOverrideSheet(iso))}>
       <div className="lbl">{t(DAYS[d.getDay()])}</div><div className="num">{d.getDate()}</div><div className={'dot' + dot} /></div>)
   }
@@ -177,6 +187,21 @@ export default function Home() {
           : routine ? <span className="row" style={{ gap: 8 }}><MiniBodyMap routines={todayRoutines} body={S.body} /><span className="tag acc">{t('Start')}</span></span>
           : <Icon name="plus" className="chev" />}
       </div>
+      {cardioToday.map(x => <div key={x.id} className="today-row cardio-today" {...tappable(() => nav('/cardio/' + x.id))}>
+        <div className="row" style={{ gap: 9, minWidth: 0 }}>
+          <span className="lrow-i" style={{ background: x.status === 'done' ? 'var(--surface-3)' : 'var(--blue)' }}>
+            <Icon name={x.status === 'done' ? 'checkCircle' : x.sport === 'bike' ? 'bike' : 'figureRun'} style={x.status === 'done' ? { color: 'var(--green)' } : undefined} />
+          </span>
+          <div style={{ minWidth: 0 }}>
+            <div className="lbl2">{t('Cardio')}</div>
+            <div className="ttl">{x.title || (x.sport === 'bike' ? t('Ride') : t('Run'))}</div>
+            <div className="ss">{x.status === 'done' ? fmtKm(x.distM) + ' ' + t('km') + ' · ' + fmtClock(x.movingSec)
+              : [x.plan?.distM ? fmtKm(x.plan.distM) + ' ' + t('km') : null, x.plan?.sec ? fmtClock(x.plan.sec) : null].filter(Boolean).join(' · ') || t('Planned')}</div>
+          </div>
+        </div>
+        {x.status === 'done' ? <span className="tag" style={{ color: 'var(--green)', background: 'color-mix(in srgb,var(--green) 16%,transparent)' }}>{t('Done')}</span>
+          : <span className="tag" style={{ color: 'var(--blue)', background: 'color-mix(in srgb,var(--blue) 16%,transparent)' }}>{t('Import')}</span>}
+      </div>)}
       {/* The row above starts today's plan in one tap, and so does the Start button in the tab
           bar — which is the whole problem when you want something else. Both jump straight into
           the planned session whenever there is one, so the Start screen (a freestyle session,

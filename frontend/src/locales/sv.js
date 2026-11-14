@@ -3800,4 +3800,7 @@ export default {
   "Pull your runs and rides from Garmin with your own API key.": "Hämta dina löppass och cykelturer från Garmin med din egen API-nyckel.",
   "Runs and rides, with the route, laps and a pace for every kilometre.": "Löppass och cykelturer, med rutt, varv och tempo för varje kilometer.",
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "Använder din egen Garmin API-nyckel. Din server sparar den och hämtar data åt dig.",
+  "Plan a ride": "Planera en cykeltur",
+  "Plan a run": "Planera ett löppass",
+  "Repeat weekly": "Upprepa varje vecka",
 }

@@ -7,13 +7,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import Icon from '../components/Icon.jsx'
-import DateField from '../components/DateField.jsx'
-import { Button, NumberField, Segmented, TextField, TextArea } from '../components/ui.jsx'
+import { cardioPlanSheet } from '../components/CardioPlanSheet.jsx'
+import { Button } from '../components/ui.jsx'
 import { confirmSheet } from '../sheets.jsx'
 import { fmtDate, fmtNum, todayISO, isoOf } from '../lib/format.js'
 import { t, tn } from '../lib/i18n.js'
 import {
-  addPlanned, editSession, removeSession, cardioList, avgPace, speedLabel, fmtClock, fmtKm,
+  removeSession, cardioList, avgPace, speedLabel, fmtClock, fmtKm,
   weekStart, weekTotals,
 } from '../lib/cardio.js'
 import { importActivityFiles } from '../lib/cardio-import.js'
@@ -27,7 +27,6 @@ const update = fn => useStore.getState().update(fn)
 const toast = m => useUI.getState().toast(m)
 const ICON = { run: 'figureRun', bike: 'bike' }
 const sportName = sp => (sp === 'bike' ? t('Ride') : t('Run'))
-const sportOptions = () => [{ value: 'run', label: t('Run') }, { value: 'bike', label: t('Ride') }]
 const unitText = u => (u === 'km/h' ? t('km/h') : t('/km'))
 /** "5:12/km" for a run, "27.4 km/h" for a ride. */
 const withUnit = v => v.value + (v.unit === 'km/h' ? ' ' : '') + unitText(v.unit)
@@ -74,50 +73,6 @@ async function runImport(fileList, matchId) {
   toast(importMessage(results))
   return results
 }
-
-/* ------------------------------------------------------------------ plan sheet -- */
-
-function PlanSheet({ id, date: startDate, close }) {
-  const existing = id ? useStore.getState().S.cardio?.[id] : null
-  const [sport, setSport] = useState(existing?.sport || 'run')
-  const [date, setDate] = useState(existing?.date || startDate || todayISO())
-  const [km, setKm] = useState(existing?.plan?.distM ? existing.plan.distM / 1000 : null)
-  const [min, setMin] = useState(existing?.plan?.sec ? Math.round(existing.plan.sec / 60) : null)
-  const [title, setTitle] = useState(existing?.title || '')
-  const [note, setNote] = useState(existing?.plan?.note || '')
-  const done = existing?.status === 'done'
-  const save = () => {
-    const plan = { distM: km > 0 ? km * 1000 : 0, sec: min > 0 ? min * 60 : 0, note }
-    if (existing) update(s => { editSession(s, id, { sport, date, title, plan }) })
-    else update(s => { addPlanned(s, { sport, date, title, distM: plan.distM, sec: plan.sec, note }) })
-    toast(existing ? t('Saved') : t('Planned'))
-    close()
-  }
-  return <>
-    <h3 className="sheet-title">{existing ? t('Edit session') : t('Plan a session')}</h3>
-    <Segmented value={sport} onChange={setSport} options={sportOptions()} />
-    <div style={{ height: 12 }} />
-    <DateField value={date} onChange={setDate} label={t('Date')} />
-    {!done && <>
-      <div className="cardio-fields">
-        <label><span className="muted small">{t('Distance (km)')}</span>
-          <NumberField className="input" value={km} nullable onChange={setKm} placeholder="–" aria-label={t('Distance (km)')} /></label>
-        <label><span className="muted small">{t('Time (min)')}</span>
-          <NumberField className="input" value={min} nullable decimal={false} onChange={setMin} placeholder="–" aria-label={t('Time (min)')} /></label>
-      </div>
-    </>}
-    <TextField value={title} maxLength={80} placeholder={t('Title (optional)')} onChange={e => setTitle(e.target.value)} />
-    {!done && <><div style={{ height: 8 }} />
-      <TextArea value={note} maxLength={500} rows={2} placeholder={t('Note (optional)')} onChange={e => setNote(e.target.value)} /></>}
-    <div style={{ height: 14 }} />
-    <Button variant="primary" onClick={save}>{t('Save')}</Button>
-    {existing && !done && <>
-      <div style={{ height: 8 }} />
-      <Button variant="ghost" style={{ color: 'var(--red)' }} onClick={() => { update(s => { removeSession(s, id) }); toast(t('Deleted')); close() }}>{t('Delete')}</Button>
-    </>}
-  </>
-}
-const planSheet = (id, date) => useUI.getState().openSheet(close => <PlanSheet id={id} date={date} close={close} />)
 
 /* ------------------------------------------------------------------ the list -- */
 
@@ -218,7 +173,7 @@ export default function Cardio() {
     <div className="hdr">
       <button className="iconbtn" data-back="/stats" onClick={() => nav('/stats')} aria-label={t('Stats')}><Icon name="chevronLeft" /></button>
       <div style={{ flex: 1, marginInlineStart: 12 }}><h1>{t('Cardio')}</h1><div className="sub">{t('Runs and rides')}</div></div>
-      <button className="iconbtn" onClick={() => planSheet(null, today)} aria-label={t('Plan a session')}><Icon name="plus" /></button>
+      <button className="iconbtn" onClick={() => cardioPlanSheet(null, today)} aria-label={t('Plan a session')}><Icon name="plus" /></button>
     </div>
     {/* No accept filter: iOS greys out .fit files it does not know, and the content decides anyway. */}
     <input ref={fileRef} type="file" multiple hidden onChange={onFiles} />
@@ -232,9 +187,9 @@ export default function Cardio() {
 
     <div className="row between" style={{ margin: '20px 2px 10px' }}>
       <h4 className="sec" style={{ margin: 0 }}>{t('Planned')}</h4>
-      <Button size="sm" variant="ghost" icon="plus" onClick={() => planSheet(null, today)}>{t('Plan')}</Button>
+      <Button size="sm" variant="ghost" icon="plus" onClick={() => cardioPlanSheet(null, today)}>{t('Plan')}</Button>
     </div>
-    {planned.length ? <div className="list">{planned.map(x => <SessionRow key={x.id} x={x} onOpen={() => planSheet(x.id)}>
+    {planned.length ? <div className="list">{planned.map(x => <SessionRow key={x.id} x={x} onOpen={() => cardioPlanSheet(x.id)}>
       <div className="cardio-act" onClick={e => e.stopPropagation()}>
         {x.date < today && <span className="tag">{t('Open')}</span>}
         <Button size="sm" icon="download" onClick={() => pick(x.id)} aria-label={t('Import into this session')}>{t('Import')}</Button>
@@ -403,7 +358,7 @@ export function CardioDetail() {
         <h1 style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{titleOf(x)}</h1>
         <div className="sub">{fmtDate(x.date, true)}{done && x.start ? ' · ' + timeOfDay(x.start) : ''}</div>
       </div>
-      <button className="iconbtn" onClick={() => planSheet(id)} aria-label={t('Edit')}><Icon name="pencil" /></button>
+      <button className="iconbtn" onClick={() => cardioPlanSheet(id)} aria-label={t('Edit')}><Icon name="pencil" /></button>
       <button className="iconbtn" style={{ color: 'var(--red)' }} onClick={remove} aria-label={t('Delete')}><Icon name="trash" /></button>
     </div>
 

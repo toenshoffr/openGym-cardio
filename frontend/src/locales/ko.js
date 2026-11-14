@@ -3753,4 +3753,7 @@ export default {
   "Pull your runs and rides from Garmin with your own API key.": "내 API 키로 Garmin의 달리기와 자전거 기록을 가져오세요.",
   "Runs and rides, with the route, laps and a pace for every kilometre.": "경로, 랩, 킬로미터별 페이스가 담긴 달리기와 자전거 기록.",
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "내 Garmin API 키를 사용해요. 서버가 키를 보관하고 대신 가져와요.",
+  "Plan a ride": "자전거 계획",
+  "Plan a run": "달리기 계획",
+  "Repeat weekly": "매주 반복",
 }

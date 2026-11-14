@@ -4,7 +4,7 @@ import { parseGpx } from './cardio-parse.js'
 import { analyze } from './cardio-analyze.js'
 import {
   addPlanned, addDone, editSession, removeSession, suggestMatch, findDuplicate, cardioList,
-  fmtPace, fmtClock, fmtKm, speedLabel, weekStart, weekTotals, dayOf,
+  fmtPace, fmtClock, fmtKm, speedLabel, weekStart, weekTotals, dayOf, addPlannedWeekly, cardioOnDay,
 } from './cardio.js'
 import { insightsOf } from './cardio-insights.js'
 
@@ -102,6 +102,30 @@ describe('planning and importing', () => {
     addPlanned(s, { sport: 'run', date: '2026-11-20' })
     expect(cardioList({ cardio: s.cardio }).map(x => x.date)).toEqual(['2026-11-20', '2026-11-01'])
     expect(cardioList({})).toEqual([])
+  })
+})
+
+describe('weekly plans', () => {
+  it('plans the same session once a week, over a month end and a clock change, 1 to 12 times', () => {
+    const s = { cardio: {} }
+    const ids = addPlannedWeekly(s, { sport: 'run', date: '2026-10-21', distM: 8000, title: 'Tempo' }, 4)
+    expect(ids).toHaveLength(4)
+    expect(ids.map(id => s.cardio[id].date)).toEqual(['2026-10-21', '2026-10-28', '2026-11-04', '2026-11-11'])
+    expect(new Set(ids.map(id => s.cardio[id].plan.distM))).toEqual(new Set([8000]))
+    expect(addPlannedWeekly({}, { sport: 'run', date: '2026-11-01' }, 99)).toHaveLength(12)
+    expect(addPlannedWeekly({}, { sport: 'run', date: '2026-11-01' }, 0)).toHaveLength(1)
+    expect(addPlannedWeekly({}, { sport: 'run', date: '2026-11-01' }, 'x')).toHaveLength(1)
+  })
+
+  it('cardioOnDay lists a day, planned first', () => {
+    const s = { cardio: {} }
+    addDone(s, run([[3000, 300]], T(2026, 11, 10)))
+    const p = addPlanned(s, { sport: 'bike', date: '2026-11-10' })
+    addPlanned(s, { sport: 'run', date: '2026-11-11' })
+    expect(cardioOnDay(s, '2026-11-10').map(x => x.status)).toEqual(['planned', 'done'])
+    expect(cardioOnDay(s, '2026-11-10')[0].id).toBe(p)
+    expect(cardioOnDay(s, '2026-12-01')).toEqual([])
+    expect(cardioOnDay({}, '2026-11-10')).toEqual([])
   })
 })
 

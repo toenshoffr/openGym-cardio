@@ -700,6 +700,8 @@ h4.sec{
 .wday .dot.plan{background:var(--label-3)}
 .wday .dot.ovr{background:var(--orange)}
 .wday .dot.done{background:var(--acc)}
+.wday .dot.cardio{background:var(--blue)}
+.cardio-today{margin-top:8px}
 /* a day off with a note on it (#261, lib/day-notes.js): the same colour on every calendar */
 .wday .dot.noted{background:var(--indigo)}
 .wday:active{background:var(--press-fill)}

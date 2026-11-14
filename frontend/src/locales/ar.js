@@ -3808,4 +3808,7 @@ export default {
   "Pull your runs and rides from Garmin with your own API key.": "اجلب جريك وركوب دراجتك من Garmin بمفتاح API الخاص بك.",
   "Runs and rides, with the route, laps and a pace for every kilometre.": "الجري وركوب الدراجة، مع المسار واللفات ووتيرة كل كيلومتر.",
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "يستخدم مفتاح Garmin API الخاص بك. يحتفظ به خادمك ويجلب البيانات نيابةً عنك.",
+  "Plan a ride": "تخطيط ركوب دراجة",
+  "Plan a run": "تخطيط جري",
+  "Repeat weekly": "كرّر أسبوعيًا",
 }

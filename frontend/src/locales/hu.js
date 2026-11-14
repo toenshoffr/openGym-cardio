@@ -3756,4 +3756,7 @@ export default {
   "Pull your runs and rides from Garmin with your own API key.": "Hozd át a futásaidat és bringázásaidat a Garminból a saját API-kulcsoddal.",
   "Runs and rides, with the route, laps and a pace for every kilometre.": "Futások és bringázások útvonallal, körökkel és minden kilométer tempójával.",
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "A saját Garmin API-kulcsodat használja. A szervered tárolja, és helyetted tölti le az adatokat.",
+  "Plan a ride": "Bringázás tervezése",
+  "Plan a run": "Futás tervezése",
+  "Repeat weekly": "Ismétlés hetente",
 }

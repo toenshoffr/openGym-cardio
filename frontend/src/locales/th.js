@@ -3764,4 +3764,7 @@ export default {
   "Pull your runs and rides from Garmin with your own API key.": "ดึงการวิ่งและการปั่นจักรยานจาก Garmin ด้วยคีย์ API ของคุณเอง",
   "Runs and rides, with the route, laps and a pace for every kilometre.": "การวิ่งและการปั่นจักรยาน พร้อมเส้นทาง รอบ และเพซของทุกกิโลเมตร",
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "ใช้คีย์ API ของ Garmin ของคุณเอง เซิร์ฟเวอร์เก็บคีย์ไว้และดึงข้อมูลให้คุณ",
+  "Plan a ride": "วางแผนการปั่นจักรยาน",
+  "Plan a run": "วางแผนการวิ่ง",
+  "Repeat weekly": "ทำซ้ำทุกสัปดาห์",
 }

@@ -101,6 +101,8 @@ import { copyText } from './lib/clipboard.js'
 import { queueRemaining, pinState } from './lib/queue.js'
 import { DAY_NOTE_TAGS, DAY_NOTE_LABEL, DAY_NOTE_ICON, dayNoteOf, dayNoteLine, canNoteDay, withDayNote } from './lib/day-notes.js'
 import { isOn } from './lib/modules.js'
+import { cardioOnDay, fmtKm, fmtClock } from './lib/cardio.js'
+import { cardioPlanSheet } from './components/CardioPlanSheet.jsx'
 
 const S = () => useStore.getState().S
 const update = (...a) => useStore.getState().update(...a)
@@ -2868,6 +2870,9 @@ function PlanImport({ bundle, close }) {
 /* ============================ day override / assign ============================ */
 function DayOverride({ iso, close }) {
   const st = useStore(s => s.S)
+  // Cardio (lib/cardio.js): the day's runs and rides, and a way to plan one, when the module is on.
+  const cardioOn = isOn(st, 'cardio')
+  const cardioToday = cardioOn ? cardioOnDay(st, iso) : []
   const hasOvr = st.dayPlan[iso] !== undefined
   // A fulfilled pin (a coach session pinned here and since done) reads as no override, as it does
   // everywhere else — the row to clear the leftover entry stays.
@@ -2926,6 +2931,20 @@ function DayOverride({ iso, close }) {
     {coach.length > 0 && <>
       <h4 className="sec" style={{ marginTop: 0 }}>{ownLoop ? t('Your loop') : t('Coach week')}</h4>
       <div className="list" style={{ marginBottom: 8 }}>{coach.map(row)}</div>
+    </>}
+    {cardioOn && <>
+      <h4 className="sec" style={{ marginTop: 0 }}>{t('Cardio')}</h4>
+      <div className="list" style={{ marginBottom: 14 }}>
+        {cardioToday.map(x => <div key={x.id} className="item" {...tappable(() => { close(); x.status === 'done' ? nav('/cardio/' + x.id) : cardioPlanSheet(x.id) })}>
+          <span className="lrow-i"><Icon name={x.sport === 'bike' ? 'bike' : 'figureRun'} /></span>
+          <div className="grow"><div className="tt">{x.title || (x.sport === 'bike' ? t('Ride') : t('Run'))}</div>
+            <div className="ss">{x.status === 'done' ? fmtKm(x.distM) + ' ' + t('km') + ' · ' + fmtClock(x.movingSec) : (x.plan?.distM ? fmtKm(x.plan.distM) + ' ' + t('km') : t('Planned'))}</div></div>
+          {x.status === 'done' ? <Icon name="checkCircle" style={{ color: 'var(--green)' }} /> : <Icon name="pencil" className="chev" />}
+        </div>)}
+        <div className="item" {...tappable(() => { close(); cardioPlanSheet(null, iso, 'run') })}><span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="figureRun" /></span><div className="grow"><div className="tt">{t('Plan a run')}</div></div><Icon name="plus" className="chev" /></div>
+        <div className="item" {...tappable(() => { close(); cardioPlanSheet(null, iso, 'bike') })}><span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="bike" /></span><div className="grow"><div className="tt">{t('Plan a ride')}</div></div><Icon name="plus" className="chev" /></div>
+      </div>
+      <h4 className="sec" style={{ marginTop: 0 }}>{t('Strength')}</h4>
     </>}
     <div className="list">
       {st.routines.filter(r => !remaining.includes(r.id)).map(row)}

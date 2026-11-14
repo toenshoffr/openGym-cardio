@@ -3773,4 +3773,7 @@ export default {
   "Pull your runs and rides from Garmin with your own API key.": "Hole deine Läufe und Radfahrten mit deinem eigenen API-Schlüssel von Garmin.",
   "Runs and rides, with the route, laps and a pace for every kilometre.": "Läufe und Radfahrten, mit Strecke, Runden und einer Pace für jeden Kilometer.",
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "Nutzt deinen eigenen Garmin-API-Schlüssel. Dein Server bewahrt ihn auf und holt die Daten für dich.",
+  "Plan a ride": "Radfahrt planen",
+  "Plan a run": "Lauf planen",
+  "Repeat weekly": "Wöchentlich wiederholen",
 }

@@ -3753,4 +3753,7 @@ export default {
   "Pull your runs and rides from Garmin with your own API key.": "Koşularını ve bisiklet sürüşlerini kendi API anahtarınla Garmin'den getir.",
   "Runs and rides, with the route, laps and a pace for every kilometre.": "Koşular ve bisiklet sürüşleri; rota, turlar ve her kilometrenin temposuyla.",
   "Uses your own Garmin API key. Your server keeps it and fetches for you.": "Kendi Garmin API anahtarını kullanır. Sunucun onu saklar ve verileri senin için çeker.",
+  "Plan a ride": "Bisiklet sürüşü planla",
+  "Plan a run": "Koşu planla",
+  "Repeat weekly": "Her hafta tekrarla",
 }
