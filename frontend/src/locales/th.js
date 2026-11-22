@@ -6024,4 +6024,6 @@ export default {
   // 1.4.5 UX round, P2: timed holds in the finish summary (next hold is shorter)
   "shorter": "สั้นลงหน่อย",
   "Garmin Connect": "Garmin Connect",
+  "No activity files in that zip": "ไม่มีไฟล์กิจกรรมใน zip นั้น",
+  "Your profile is full: delete some old activities to import more": "โปรไฟล์ของคุณเต็มแล้ว: ลบกิจกรรมเก่าบางส่วนเพื่อนำเข้าเพิ่ม",
 }

@@ -10,7 +10,7 @@ import Icon from '../components/Icon.jsx'
 import { cardioPlanSheet, openPlanned } from '../components/CardioPlanSheet.jsx'
 import { Button } from '../components/ui.jsx'
 import { confirmSheet } from '../sheets.jsx'
-import { fmtDate, fmtNum, todayISO, isoOf } from '../lib/format.js'
+import { fmtDate, fmtNum, todayISO, isoOf, weekStartOf } from '../lib/format.js'
 import { t, tn } from '../lib/i18n.js'
 import {
   removeSession, cardioList, planOf, upcoming, avgPace, speedLabel, fmtClock, fmtKm,
@@ -21,6 +21,7 @@ import { syncGarmin, garminMessage } from '../lib/garmin-sync.js'
 import { api } from '../lib/api.js'
 import { DEMO } from '../lib/demo.js'
 import { insightsOf } from '../lib/cardio-insights.js'
+import { ptsOf } from '../lib/cardio-pts.js'
 import './Cardio.css'
 
 const update = fn => useStore.getState().update(fn)
@@ -50,6 +51,8 @@ function errorText(code) {
     case 'zip': return t('That is a zip file. Unpack it first and pick the activity files inside')
     case 'gz': return t('This browser cannot unpack .gz files. Unpack it first')
     case 'nodistance': return t('That file has no distance in it')
+    case 'nozip': return t('No activity files in that zip')
+    case 'full': return t('Your profile is full: delete some old activities to import more')
     case 'read': return t('Could not read that file')
     default: return t('That is not a GPX, TCX or FIT file')
   }
@@ -78,7 +81,7 @@ async function runImport(fileList, matchId) {
 
 function WeekCard({ S }) {
   const today = todayISO()
-  const start = weekStart(today)
+  const start = weekStart(today, weekStartOf(S))
   const weeks = useMemo(() => Array.from({ length: 8 }, (_, i) => {
     const d = new Date(start + 'T12:00:00'); d.setDate(d.getDate() - 7 * (7 - i))
     const from = isoOf(d)
@@ -143,6 +146,7 @@ export default function Cardio() {
   const S = useStore(s => s.S)
   const garmin = useGarmin()
   const [syncing, setSyncing] = useState(null)
+  const [importing, setImporting] = useState(false)
   const fileRef = useRef(null)
   const matchRef = useRef(null)
   const today = todayISO()
@@ -150,13 +154,15 @@ export default function Cardio() {
   // Planned: one-offs of any day and the weekly slots' days of the next two weeks (lib/cardio.js).
   const planned = upcoming(S, today, 14)
   const done = all.filter(x => x.status === 'done')
-  const pick = matchId => { matchRef.current = matchId; fileRef.current?.click() }
+  const pick = matchId => { if (importing) return; matchRef.current = matchId; fileRef.current?.click() }
   const onFiles = async ev => {
     const files = [...ev.target.files]
     ev.target.value = ''
     const matchId = matchRef.current
     matchRef.current = null
-    const r = await runImport(files, matchId)
+    setImporting(true)
+    let r = null
+    try { r = await runImport(files, matchId) } finally { setImporting(false) }
     if (r?.length === 1 && r[0].status === 'added') nav('/cardio/' + r[0].id)
   }
   const syncFromGarmin = async () => {
@@ -183,7 +189,7 @@ export default function Cardio() {
     {garmin && <><Button icon="watch" variant="primary" disabled={!!syncing} onClick={syncFromGarmin}>
       {syncing?.total ? t('Getting {0} of {1}…', Math.min(syncing.done + 1, syncing.total), syncing.total) : syncing ? t('Working…') : t('Sync from Garmin')}
     </Button><div style={{ height: 8 }} /></>}
-    <Button icon="download" variant={garmin ? 'tinted' : 'primary'} onClick={() => pick(null)}>{t('Import from Strava or Garmin')}</Button>
+    <Button icon="download" variant={garmin ? 'tinted' : 'primary'} disabled={importing} onClick={() => pick(null)}>{importing ? t('Working…') : t('Import from Strava or Garmin')}</Button>
     <div className="small dim" style={{ margin: '8px 2px 0' }}>{t('Pick the GPX, TCX or FIT file of an activity. How to get one is in the docs.')}</div>
 
     <div className="row between" style={{ margin: '20px 2px 10px' }}>
@@ -241,7 +247,7 @@ function RouteMap({ pts }) {
 
 /** Pace (or speed) along the distance, over a soft elevation profile. Faster is higher. */
 function Profile({ x }) {
-  const pts = x.pts || []
+  const pts = ptsOf(x)
   if (pts.length < 3) return null
   const W = 340, H = 150, L = 34, B = 18, T = 8, R = 6
   const dMax = pts[pts.length - 1][3] || 1
@@ -345,7 +351,8 @@ export function CardioDetail() {
   const done = x.status === 'done'
   const bike = x.sport === 'bike'
   const sp = done ? speedLabel(x.sport, avgPace(x)) : null
-  const start = done ? x.pts?.find(p => p[0] != null) : null
+  const rows = done ? ptsOf(x) : []
+  const start = rows.find(p => p[0] != null) || null
   const bests = done ? Object.entries(x.best || {}) : []
   const remove = () => confirmSheet({
     title: t('Delete this activity?'), message: t('Deletes {0} from {1}.', titleOf(x), fmtDate(x.date, true)),
@@ -382,10 +389,10 @@ export function CardioDetail() {
         </div>
       </>}
 
-      {x.pts?.some(p => p[0] != null) && <>
+      {start && <>
         <h4 className="sec">{t('Route')}</h4>
         <div className="card cardio-mapcard">
-          <RouteMap pts={x.pts} />
+          <RouteMap pts={rows} />
           <div className="row between small dim" style={{ marginTop: 6 }}>
             <span>{t('Slower')} <i className="cardio-key" /> {t('faster')}</span>
             {start && <a className="cardio-link" target="_blank" rel="noopener noreferrer"

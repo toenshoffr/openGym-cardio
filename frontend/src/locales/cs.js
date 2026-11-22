@@ -5977,4 +5977,6 @@ export default {
   "{0}% further than the {1} you planned.": "O {0} % delší, než jste plánovali ({1}).",
   "{0}% shorter than the {1} you planned.": "O {0} % kratší, než jste plánovali ({1}).",
   "Garmin Connect": "Garmin Connect",
+  "No activity files in that zip": "V tomto zipu nejsou žádné soubory aktivit",
+  "Your profile is full: delete some old activities to import more": "Váš profil je plný: smažte staré aktivity, abyste mohli importovat další",
 }

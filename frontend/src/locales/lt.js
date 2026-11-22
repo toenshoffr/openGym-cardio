@@ -6007,4 +6007,6 @@ export default {
   "{0}% further than the {1} you planned.": "{0} % toliau nei suplanuoti {1}.",
   "{0}% shorter than the {1} you planned.": "{0} % trumpiau nei suplanuoti {1}.",
   "Garmin Connect": "Garmin Connect",
+  "No activity files in that zip": "Šiame zip faile nėra veiklų failų",
+  "Your profile is full: delete some old activities to import more": "Jūsų profilis pilnas: ištrinkite kelias senas veiklas, kad galėtumėte importuoti daugiau",
 }

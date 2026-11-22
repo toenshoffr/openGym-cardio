@@ -5951,4 +5951,6 @@ export default {
   "{0}% further than the {1} you planned.": "{0} % længere end de {1}, du planlagde.",
   "{0}% shorter than the {1} you planned.": "{0} % kortere end de {1}, du planlagde.",
   "Garmin Connect": "Garmin Connect",
+  "No activity files in that zip": "Der er ingen aktivitetsfiler i den zip-fil",
+  "Your profile is full: delete some old activities to import more": "Din profil er fuld: slet nogle gamle aktiviteter for at importere flere",
 }

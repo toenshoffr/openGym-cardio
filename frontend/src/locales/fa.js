@@ -5977,4 +5977,6 @@ export default {
   "{0}% further than the {1} you planned.": "{0}٪ بیشتر از {1} برنامه‌ریزی‌شده.",
   "{0}% shorter than the {1} you planned.": "{0}٪ کمتر از {1} برنامه‌ریزی‌شده.",
   "Garmin Connect": "Garmin Connect",
+  "No activity files in that zip": "در این فایل زیپ هیچ فایل فعالیتی نیست",
+  "Your profile is full: delete some old activities to import more": "پروفایل شما پر است: برای وارد کردن بیشتر، چند فعالیت قدیمی را حذف کنید",
 }

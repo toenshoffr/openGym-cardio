@@ -151,7 +151,46 @@ describe('the detail page', () => {
   })
 })
 
+describe('the week card', () => {
+  const sunday = new Date(2026, 10, 8, 7).getTime()          // the clock stands on Wednesday 11 November
+  it('is the week the profile starts on: Monday leaves a Sunday run in last week, Sunday takes it in', () => {
+    seed(s => { addDone(s, analyze(parseGpx(gpxOf(makeTrack({ legs: [[3000, 300]], t0: sunday }))))) })
+    render(<Cardio />)
+    expect(host.querySelector('.cardio-week .big').textContent).toContain('0')
+    act(() => root.unmount()); host.remove()
+    host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host)
+    mocks.S.weekStart = 0
+    render(<Cardio />)
+    expect(host.querySelector('.cardio-week .big').textContent).toContain('3')
+  })
+})
+
+describe('editing a finished session', () => {
+  it('can change its sport and title but not the day it was done on', () => {
+    const id = seed(s => addDone(s, analyze(parseGpx(gpxOf(makeTrack({ legs: [[3000, 300]], t0: T }))))))
+    mocks.params = { id }
+    render(<CardioDetail />)
+    click(button('Edit'))
+    const sheet = document.createElement('div'); document.body.appendChild(sheet)
+    const r2 = createRoot(sheet)
+    act(() => r2.render(mocks.sheets.at(-1)(() => {})))
+    expect(sheet.textContent).toContain('Edit session')
+    expect(sheet.textContent).toContain('Ride')
+    expect(sheet.querySelector('input[placeholder="Title (optional)"]')).toBeTruthy()
+    expect(sheet.textContent).not.toContain('Date')
+    expect(sheet.textContent).not.toContain('Distance (km)')
+    act(() => [...sheet.querySelectorAll('button')].find(b => b.textContent === 'Ride').click())
+    act(() => [...sheet.querySelectorAll('button')].find(b => b.textContent === 'Save').click())
+    expect(mocks.S.cardio[id].sport).toBe('bike')
+    act(() => r2.unmount()); sheet.remove()
+  })
+})
+
 describe('importMessage', () => {
+  it('says what the new refusals mean', () => {
+    expect(importMessage([{ status: 'error', code: 'nozip' }])).toBe('No activity files in that zip')
+    expect(importMessage([{ status: 'error', code: 'full' }])).toBe('Your profile is full: delete some old activities to import more')
+  })
   it('words one file and a batch', () => {
     expect(importMessage([{ status: 'added', planned: true }])).toContain('matched')
     expect(importMessage([{ status: 'duplicate' }])).toBe('Already imported')
