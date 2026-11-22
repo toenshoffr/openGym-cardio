@@ -6067,4 +6067,6 @@ export default {
   "Preview on": "المعاينة على",
   // 1.4.5 UX round, P2: timed holds in the finish summary (next hold is shorter)
   "shorter": "أقصر قليلًا",
+  "No activity files in that zip": "لا توجد ملفات أنشطة في هذا الملف المضغوط",
+  "Your profile is full: delete some old activities to import more": "ملفك الشخصي ممتلئ: احذف بعض الأنشطة القديمة لتستورد المزيد",
 }

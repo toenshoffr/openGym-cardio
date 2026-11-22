@@ -5976,4 +5976,6 @@ export default {
   "{0} training days in the last 12 months": "{0} روز تمرین در 12 ماه گذشته",
   "{0}% further than the {1} you planned.": "{0}% بیشتر از {1} برنامه‌ریزی‌شده.",
   "{0}% shorter than the {1} you planned.": "{0}% کوتاه‌تر از {1} برنامه‌ریزی‌شده.",
+  "No activity files in that zip": "در این فایل زیپ هیچ فایل فعالیتی نیست",
+  "Your profile is full: delete some old activities to import more": "پروفایل شما پر است: برای وارد کردن بیشتر، چند فعالیت قدیمی را حذف کنید",
 }

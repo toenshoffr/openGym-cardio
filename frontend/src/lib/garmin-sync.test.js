@@ -85,6 +85,14 @@ describe('syncGarmin', () => {
     expect(garminMessage(r3)).toBe('Could not reach Garmin')
   })
 
+  it('stops, and says so, when the profile has no room for more', async () => {
+    const st = store()
+    st.S.padding = 'x'.repeat(4 * 1024 * 1024 + 1000)
+    const r = await syncGarmin({ api: fake([act(0), act(1), act(2)]).api, connId: 'c1', ...st })
+    expect(r).toMatchObject({ added: 0, stopped: 'full', left: 3 })
+    expect(garminMessage(r)).toBe('Your profile is full: delete some old activities to import more')
+  })
+
   it('says when there is nothing new', async () => {
     const st = store()
     expect(garminMessage(await syncGarmin({ api: fake([]).api, connId: 'c1', ...st }))).toBe('Nothing new on Garmin')

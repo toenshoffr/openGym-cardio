@@ -6022,4 +6022,6 @@ export default {
   "Preview on": "Anteprima su",
   // 1.4.5 UX round, P2: timed holds in the finish summary (next hold is shorter)
   "shorter": "un po’ più corto",
+  "No activity files in that zip": "Nessun file di attività in quello zip",
+  "Your profile is full: delete some old activities to import more": "Il tuo profilo è pieno: elimina alcune attività vecchie per importarne altre",
 }

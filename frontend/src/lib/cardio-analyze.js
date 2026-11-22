@@ -6,8 +6,10 @@
 // shows them as km/h instead of min/km (lib/cardio.js).
 //
 // What is stored is deliberately small: the whole profile document syncs as one JSON (the API
-// takes 5 MB), so a session keeps ~150 profile points, not the thousands a watch records.
+// takes 5 MB), so a session keeps ~150 profile points, not the thousands a watch records, and keeps
+// them as the compact string of cardio-pts.js (about 1.5 KB, a third of the array it used to be).
 import { CardioError } from './cardio-error.js'
+import { packPts } from './cardio-pts.js'
 
 const R = 6371008.8
 const rad = x => x * Math.PI / 180
@@ -19,6 +21,10 @@ export function haversine(lat1, lon1, lat2, lon2) {
 
 // Below this a stretch counts as standing still (a traffic light, a drink). 0.5 m/s = 3 km/h.
 export const STOP_SPEED = 0.5
+// Faster than this between two fixes is a glitch, not a runner or a rider (m/s: 43 km/h, 108 km/h).
+export const MAX_SPEED = { run: 12, bike: 30 }
+// What counts as a heart rate at all.
+export const HR_MIN = 30, HR_MAX = 250
 // A gap between two points longer than this with hardly any movement is an auto-pause.
 const PAUSE_GAP_S = 8
 export const BEST_TARGETS = [1000, 5000, 10000, 21097.5, 42195]
@@ -85,6 +91,31 @@ export function analyze(parsed) {
   const pts = [...parsed.points].filter(p => Number.isFinite(p.t)).sort((a, b) => a.t - b.t)
     .filter((p, i, a) => i === 0 || p.t !== a[i - 1].t)
   if (pts.length < 2) throw new CardioError('empty', 'Too few track points.')
+
+  // Two kinds of bad reading, dealt with before anything is measured:
+  //  - a GPS glitch, one fix a few hundred metres off, which would add that distance twice and make an
+  //    impossible best kilometre. A fix whose speed from the last good one is beyond what a person or a
+  //    bike does is left out of the track; one that stays "too far" is believed once enough time has
+  //    passed to have covered it, so a real jump after a tunnel is not thrown away for good.
+  //  - a heart rate of 0 (a strap that lost contact) or a spike over 250, which is no heart rate.
+  // Copies, never the parsed file's own points.
+  const cap = MAX_SPEED[parsed.sport] ?? MAX_SPEED.bike
+  let good = null
+  const cut = []                                   // [index, the point as it was] for every fix left out
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i]
+    if (p.hr != null && !(p.hr > HR_MIN && p.hr < HR_MAX)) pts[i] = { ...p, hr: null }
+    if (p.lat == null) continue
+    if (good) {
+      const dt = (p.t - good.t) / 1000
+      if (dt > 0 && haversine(good.lat, good.lon, p.lat, p.lon) / dt > cap) { cut.push([i, pts[i]]); pts[i] = { ...pts[i], lat: null, lon: null }; continue }
+    }
+    good = p
+  }
+  // Glitches are few. When a quarter of the fixes are "impossible" the limit is what is wrong (a ride
+  // saved as a run, say), so the track is taken as it is rather than thrown away.
+  const fixes = pts.filter(p => p.lat != null).length + cut.length
+  if (cut.length > 0.25 * fixes) for (const [i, p] of cut) pts[i] = p
 
   // Cumulative distance: the file's own where it has one (a watch knows its own sensors, and a
   // treadmill run has no GPS at all), measured from the coordinates otherwise.
@@ -163,7 +194,7 @@ export function analyze(parsed) {
 
   // Heart rate and cadence. Running cadence is stored per leg by most watches (80-95 for a
   // runner at 160-190 steps a minute); it is shown as steps a minute, so double a per-leg one.
-  const hrVals = hrs.filter(h => h != null && h > 30 && h < 250)
+  const hrVals = hrs.filter(h => h != null)
   let avgCad = null
   const cads = pts.map(p => p.cad).filter(c => c != null && c > 0)
   if (cads.length > pts.length * 0.3) {
@@ -185,7 +216,7 @@ export function analyze(parsed) {
     maxHr: hrVals.length ? Math.max(...hrVals) : null,
     avgCad,
     splits, laps, best,
-    pts: profileOf(pts, dist, mt, ele, hasPos, hasHr),
+    pts: packPts(profileOf(pts, dist, mt, ele, hasPos, hasHr)),
     source: parsed.source,
   }
 }

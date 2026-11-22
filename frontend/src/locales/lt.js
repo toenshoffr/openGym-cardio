@@ -6006,4 +6006,6 @@ export default {
   "{0} training days in the last 12 months": { one: "{0} treniruočių diena per paskutinius 12 mėnesių", few: "{0} treniruočių dienos per paskutinius 12 mėnesių", many: "{0} treniruočių dienos per paskutinius 12 mėnesių", other: "{0} treniruočių dienų per paskutinius 12 mėnesių" },
   "{0}% further than the {1} you planned.": "{0} % toliau nei planuotas {1}.",
   "{0}% shorter than the {1} you planned.": "{0} % trumpiau nei planuotas {1}.",
+  "No activity files in that zip": "Šiame zip faile nėra veiklų failų",
+  "Your profile is full: delete some old activities to import more": "Jūsų profilis pilnas: ištrinkite kelias senas veiklas, kad galėtumėte importuoti daugiau",
 }

@@ -33,7 +33,7 @@ function CardioPlanSheet({ id, date: startDate, sport: startSport, close }) {
     <h3 className="sheet-title">{existing ? t('Edit session') : t('Plan a session')}</h3>
     <Segmented value={sport} onChange={setSport} options={sportOptions()} />
     <div style={{ height: 12 }} />
-    <DateField value={date} onChange={setDate} label={t('Date')} />
+    {!done && <DateField value={date} onChange={setDate} label={t('Date')} />}
     {!done && <div className="cardio-fields">
       <label><span className="muted small">{t('Distance (km)')}</span>
         <NumberField className="input" value={km} nullable onChange={setKm} placeholder="–" aria-label={t('Distance (km)')} /></label>

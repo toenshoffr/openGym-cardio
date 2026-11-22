@@ -5,7 +5,7 @@
 // there. Nothing is invented: an insight shows only when the file carries the data and the
 // effect is large enough to mean something.
 import { doneList, weekStart, weekTotals } from './cardio.js'
-import { isoOf } from './format.js'
+import { isoOf, weekStartOf } from './format.js'
 
 const mean = xs => xs.reduce((a, b) => a + b, 0) / xs.length
 const sd = xs => { const m = mean(xs); return Math.sqrt(mean(xs.map(x => (x - m) ** 2))) }
@@ -72,11 +72,12 @@ export function insightsOf(x, S) {
 
   // The week it sits in against the four before it.
   if (x.date) {
-    const wk = weekStart(x.date)
+    const ws = weekStartOf(S)
+    const wk = weekStart(x.date, ws)
     const here = weekTotals(S, wk).distM
     const prior = [1, 2, 3, 4].map(i => {
       const d = new Date(wk + 'T12:00:00'); d.setDate(d.getDate() - 7 * i)
-      return weekTotals(S, weekStart(isoOf(d))).distM
+      return weekTotals(S, weekStart(isoOf(d), ws)).distM
     }).filter(v => v > 0)
     if (prior.length >= 2 && here > 0) {
       const avg = mean(prior), pct = Math.round((here - avg) / avg * 100)

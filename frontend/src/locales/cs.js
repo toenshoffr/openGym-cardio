@@ -5976,4 +5976,6 @@ export default {
   "{0} training days in the last 12 months": { one: "{0} tréninkový den za posledních 12 měsíců", few: "{0} tréninkové dny za posledních 12 měsíců", many: "{0} tréninkového dne za posledních 12 měsíců", other: "{0} tréninkových dnů za posledních 12 měsíců" },
   "{0}% further than the {1} you planned.": "O {0} % dál, než jsi plánoval ({1}).",
   "{0}% shorter than the {1} you planned.": "O {0} % kratší než plánovaných {1}.",
+  "No activity files in that zip": "V tomto zipu nejsou žádné soubory aktivit",
+  "Your profile is full: delete some old activities to import more": "Váš profil je plný: smažte staré aktivity, abyste mohli importovat další",
 }

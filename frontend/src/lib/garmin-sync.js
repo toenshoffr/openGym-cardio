@@ -56,6 +56,7 @@ export async function syncGarmin({ api, connId, getS, update, onProgress }) {
     const [res] = await importActivityFiles([{ name: file.name, arrayBuffer: async () => bytes.buffer }], getS, update)
     if (res.status === 'added') { out.added++; if (res.planned) out.planned++ }
     else if (res.status === 'duplicate') out.dupes++
+    else if (res.code === 'full') { out.stopped = 'full'; out.left += todo.length - i; break }
     else out.errors++
   }
   onProgress?.(todo.length, todo.length)
@@ -66,6 +67,7 @@ export async function syncGarmin({ api, connId, getS, update, onProgress }) {
 export function garminMessage(r) {
   if (r.stopped === 'key') return t('Garmin refused the key. It may have expired: make a new one on Garmin Connect.')
   if (r.stopped === 'busy') return t('Garmin says slow down. Try again in a few minutes.')
+  if (r.stopped === 'full') return t('Your profile is full: delete some old activities to import more')
   if (r.stopped && !r.added) return t('Could not reach Garmin')
   if (!r.added && !r.errors && !r.left) return t('Nothing new on Garmin')
   const parts = [t('{0} imported from Garmin', r.added)]

@@ -20,7 +20,11 @@ Strava's archive contains). The format is read from the content, never the file 
 | Garmin Connect, one activity | On the website, open the activity, ⚙ → **Export Original** (a zip with one `.fit`: unpack it) or **Export to GPX** / **Export to TCX** |
 | A watch or bike computer | Plug it in and copy the `.fit` files from its `Activity` folder |
 
-A zip itself is refused with a message (openGym reads no zip but its own backups): unpack it first.
+A **zip** is opened for you: Garmin's "Export Original" (one `.fit` inside) and Strava's whole archive
+alike. Every activity file in it (`.fit`, `.gpx`, `.tcx`, each also gzipped) is imported, the rest of the
+archive (the CSV, photos) is skipped, and one that was imported before is left out. Up to 2000 activity
+files in one zip. It needs a browser with `DecompressionStream` (Chrome and Edge 103, Firefox 113,
+Safari 16.4 and newer).
 
 ## Planning and importing
 
@@ -147,6 +151,19 @@ survive. Only a summary is kept of each file: totals, the kilometre splits, the 
 efforts and about 150 points for the route and the chart (about 4 KB), not every trackpoint, so
 hundreds of sessions fit comfortably in the profile document (5 MB limit). The original file is not
 kept; keep it where you got it if you want it.
+
+A finished session is about **1.6 KB for a 5 km run** and a few KB for a long ride (the route and
+the pace profile are kept as one delta-coded string, `lib/cardio-pts.js`; sessions from before that keep
+their array and read as always). The profile is one document and the API takes 5 MB of it, so roughly 1500
+sessions fit beside your workouts. An import stops before the document passes 4 MB and says "Your profile is
+full" (`DOC_LIMIT` in `lib/cardio-import.js`), instead of letting the next sync be refused.
+
+**Bad readings.** One GPS fix a few hundred metres off would add that distance twice and make an
+impossible best kilometre, so a fix whose speed from the last good one is beyond 12 m/s on foot or 30 m/s
+on a bike is left out of the track (and the route); one that stays wrong is believed again once the clock
+has caught up with it, and a file where a quarter of the fixes are "impossible" (a ride saved as a run) is
+taken as it is. A heart rate of 0, or over 250, is no reading, in the kilometres as in the average.
+Weeks (the week card, "this week against your usual week") start on the day the profile's week starts on.
 
 Running cadence is shown in steps a minute. Watches store it per leg, so a value under 120 on a run
 is doubled.

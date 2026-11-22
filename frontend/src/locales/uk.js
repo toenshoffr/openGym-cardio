@@ -6009,4 +6009,6 @@ export default {
   "Preview on": "Попередній перегляд на",
   // 1.4.5 UX round, P2: timed holds in the finish summary (next hold is shorter)
   "shorter": "трохи коротше",
+  "No activity files in that zip": "У цьому zip немає файлів активностей",
+  "Your profile is full: delete some old activities to import more": "Профіль заповнено: видаліть старі активності, щоб імпортувати нові",
 }

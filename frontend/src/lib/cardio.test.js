@@ -262,6 +262,16 @@ describe('insights', () => {
     const { S, out } = withSessions(...items)
     expect(insightsOf(out.at(-1), S).find(x => x.id === 'week').pct).toBeGreaterThan(100)
   })
+  it('counts the week the way the profile does: a Sunday run is this week with a Sunday start, last week with a Monday start', () => {
+    const items = [T(2026, 10, 14), T(2026, 10, 21), T(2026, 10, 28), T(2026, 11, 4)].map(t => run([[5000, 300]], t))
+    items.push(run([[20000, 300]], T(2026, 11, 8)))       // Sunday
+    items.push(run([[5000, 300]], T(2026, 11, 10)))       // Tuesday: the session looked at
+    const make = ws => { const { S, out } = withSessions(...items); S.weekStart = ws; return insightsOf(out.at(-1), S).find(x => x.id === 'week') }
+    const sundayStart = make(0), mondayStart = make(1)
+    expect(sundayStart.pct).toBeGreaterThan(100)           // Sunday + Tuesday = 25 km against about 5
+    expect(mondayStart === undefined || mondayStart.pct < 0).toBe(true)
+  })
+
   it('says nothing it cannot back up on a short, plain session', () => {
     const { S, out } = withSessions(run([[1500, 300]], T(2026, 11, 10)))
     expect(insightsOf(out[0], S)).toEqual([])

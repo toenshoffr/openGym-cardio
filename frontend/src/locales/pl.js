@@ -6012,4 +6012,6 @@ export default {
   "Preview on": "Podgląd na",
   // 1.4.5 UX round, P2: timed holds in the finish summary (next hold is shorter)
   "shorter": "trochę krócej",
+  "No activity files in that zip": "W tym pliku zip nie ma plików aktywności",
+  "Your profile is full: delete some old activities to import more": "Twój profil jest pełny: usuń kilka starych aktywności, aby zaimportować więcej",
 }
