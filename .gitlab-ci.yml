@@ -21,6 +21,10 @@
 #                 links to APK, checksum and SBOMs
 #   maintenance — Renovate (scheduled) and the fork-MR pipeline starter (scheduled + main)
 #
+# Feature branches (and merge requests from branches of this project) run everything except the
+# Pages demo: images tagged branch-<slug>-<sha> (never :edge or :latest), verify, the APK and
+# a preview Release. Only main and v* tags publish edge, latest and the real Release.
+#
 # One deliberate difference from the GitHub copy: GitHub could distinguish a bare tag
 # push from a *published* release, and only shipped images from the latter (issue #87 —
 # a tag that is later consolidated away must not leave orphan image tags behind).
@@ -79,6 +83,9 @@ workflow:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
       when: never
+    # release:preview tags every branch build; those tags must not start pipelines of their own.
+    - if: $CI_COMMIT_TAG =~ /^preview\//
+      when: never
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH
 
@@ -112,6 +119,11 @@ workflow:
 # the "build it like a release" paths key off this.
 .release_tag: &release_tag
   if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+
+# Any branch of this project, or a merge request from a branch of this project. Not a fork's
+# MR: its pipeline must not get to push images to our registry, so those stay manual.
+.same_project_ref: &same_project_ref
+  if: $CI_COMMIT_BRANCH || ($CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_PROJECT_ID == $CI_PROJECT_ID)
 
 # ---------------------------------------------------------------------------- test
 
@@ -335,11 +347,17 @@ build:images:
         # Only the arm64 leg needs emulation, and only for the api image (web's build
         # stage is pinned to $BUILDPLATFORM on purpose — see web/Dockerfile).
         docker run --privileged --rm tonistiigi/binfmt --install arm64
-      else
+      elif [ "$CI_COMMIT_REF_NAME" = "$CI_DEFAULT_BRANCH" ]; then
         VERSION="main-$CI_COMMIT_SHORT_SHA"
         IMAGE_TAG="$VERSION"
         PLATFORMS="linux/amd64"
         TAGS="-t $REPO:edge -t $REPO:$VERSION"
+      else
+        # A feature branch gets its own tags and never touches :edge or :latest.
+        VERSION="branch-$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA"
+        IMAGE_TAG="$VERSION"
+        PLATFORMS="linux/amd64"
+        TAGS="-t $REPO:branch-$CI_COMMIT_REF_SLUG -t $REPO:$VERSION"
       fi
       docker buildx create --use --name opengym --driver docker-container tls-environment
       # shellcheck disable=SC2086
@@ -376,7 +394,7 @@ build:images:
     - !reference [.rules, not_on_schedule]
     - *release_tag
     - if: ($CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "api") && $PUBLISH_LATEST
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - *same_project_ref
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: manual
       allow_failure: true
@@ -457,7 +475,7 @@ build:api-check:
   rules:
     - !reference [.rules, not_on_schedule]
     - *release_tag
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - *same_project_ref
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         paths:
@@ -491,7 +509,7 @@ build:web-check:
   rules:
     - !reference [.rules, not_on_schedule]
     - *release_tag
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - *same_project_ref
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         paths:
@@ -606,7 +624,12 @@ build:apk:
     - !reference [.rules, not_on_schedule]
     - if: $CI_COMMIT_TAG
       when: never
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
+    # Feature branches build the (unsigned) APK on their own.
+    - *same_project_ref
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: manual
       allow_failure: true
 
@@ -676,6 +699,7 @@ build:ios:
       when: never
     - *release_tag
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - *same_project_ref
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: manual
       allow_failure: true
@@ -733,7 +757,7 @@ verify:stack:
     - !reference [.rules, not_on_schedule]
     - *release_tag
     - if: ($CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "api") && $PUBLISH_LATEST
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - *same_project_ref
 
 # What the pushed images carry: a Trivy scan of OS packages and the npm trees (fixable
 # HIGH/CRITICAL only — an unfixed CVE in alpine is not something a release can wait for), and
@@ -788,7 +812,7 @@ verify:scan:
     - !reference [.rules, not_on_schedule]
     - *release_tag
     - if: ($CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "api") && $PUBLISH_LATEST
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - *same_project_ref
 
 # ---------------------------------------------------------------------------- pages
 
@@ -898,6 +922,54 @@ release:
         - name: "SBOM web image (CycloneDX)"
           url: "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/opengym-sbom/$IMAGE_TAG/opengym-web-$IMAGE_TAG.cdx.json"
           link_type: other
+
+# A Release per branch build, tagged preview/<branch>-<sha>: same checks behind it as the real
+# one (images built, stack served, scan run), but no changelog section, no :latest.
+# The preview/ tags start no pipeline of their own (workflow rules). Delete old ones from
+# Code -> Tags when they pile up.
+release:preview:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:v0.24.0
+  interruptible: false
+  timeout: 10 minutes
+  needs:
+    - job: build:images
+      artifacts: true
+    - job: verify:stack
+      artifacts: false
+    - job: verify:scan
+      artifacts: false
+  rules:
+    - !reference [.rules, not_on_schedule]
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      when: never
+    - *same_project_ref
+  script:
+    - |
+      set -eu
+      cat > release-notes.md <<EOF
+      Preview build of \`$CI_COMMIT_REF_NAME\` at $CI_COMMIT_SHORT_SHA. Not a release.
+
+      $CI_COMMIT_TITLE
+
+      | Image | Tag | Digest |
+      |---|---|---|
+      | \`$CI_REGISTRY_IMAGE/api\` | \`$IMAGE_TAG\` | \`$IMAGE_DIGEST_API\` |
+      | \`$CI_REGISTRY_IMAGE/web\` | \`$IMAGE_TAG\` | \`$IMAGE_DIGEST_WEB\` |
+
+      Built from $CI_COMMIT_SHA.
+      EOF
+      cat release-notes.md
+  release:
+    tag_name: preview/$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    ref: $CI_COMMIT_SHA
+    name: "Preview $CI_COMMIT_REF_NAME ($CI_COMMIT_SHORT_SHA)"
+    description: release-notes.md
+    assets:
+      links:
+        - name: "Container images (api + web)"
+          url: "$CI_PROJECT_URL/container_registry"
+          link_type: image
 
 # ---------------------------------------------------------------------- maintenance
 
